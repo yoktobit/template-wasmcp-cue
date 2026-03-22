@@ -1,0 +1,29 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "#PersonalData": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "birthdate": {
+                    "$ref": "#/$defs/Time"
+                },
+                "forename": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "birthdate",
+                "forename",
+                "name"
+            ]
+        },
+        "Time": {
+            "type": "string"
+        }
+    },
+    "$ref": "#/$defs/%23PersonalData"
+}

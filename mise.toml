@@ -1,0 +1,9 @@
+[tools]
+cue = "latest"
+"github:wasmCloud/wasmCloud" = "latest"
+"github:wasmcp/wasmcp" = "latest"
+rust = {version = "latest", profile = "complete", targets ="wasm32-wasip2"}
+
+[tasks.liscaf-generate]
+description = "add the rust target wasm32-wasip2"
+run = "rustup target add wasm32-wasip2"

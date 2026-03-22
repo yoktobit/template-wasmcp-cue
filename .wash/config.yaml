@@ -1,0 +1,3 @@
+build:
+  command: make && wasmcp compose server --runtime wasmcloud ./target/wasm32-wasip2/release/acme_app.wasm --force -o ./target/acme_app_server.wasm
+  component_path: target/acme_app_server.wasm
