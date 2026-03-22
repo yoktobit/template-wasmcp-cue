@@ -6,4 +6,4 @@ rust = {version = "latest", profile = "complete", targets ="wasm32-wasip2"}
 
 [tasks.liscaf-merge]
 description = "add the rust target wasm32-wasip2"
-run = "rustup target add wasm32-wasip2"
+run = "mise x -- rustup target add wasm32-wasip2"
