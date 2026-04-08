@@ -8,12 +8,14 @@ import "time"
 	forename:  string
 	// Das Geburtsdatum
 	birthdate: time.Time
+    wish: string
 }
 
 // Die Nachricht, die an den Nutzer ausgegeben wird
 #Message: {
 	// The Greeting
 	NiceMessage: string
+    NotsoNiceMessage: string
 }
 
 // Die Eingabewerte für MCP

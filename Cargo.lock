@@ -3,7 +3,16 @@
 version = 4
 
 [[package]]
-name = "acme-app"
+name = "acme-component"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "wit-bindgen 0.54.0",
+]
+
+[[package]]
+name = "acme-mcp"
 version = "0.1.0"
 dependencies = [
  "serde",

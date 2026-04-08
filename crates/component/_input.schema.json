@@ -1,0 +1,30 @@
+{
+  "$defs": {
+    "#PersonalData": {
+      "additionalProperties": false,
+      "properties": {
+        "birthdate": {
+          "type": "string"
+        },
+        "forename": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "wish": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "birthdate",
+        "forename",
+        "name",
+        "wish"
+      ],
+      "type": "object"
+    }
+  },
+  "$ref": "#/$defs/%23PersonalData",
+  "$schema": "https://json-schema.org/draft/2020-12/schema"
+}

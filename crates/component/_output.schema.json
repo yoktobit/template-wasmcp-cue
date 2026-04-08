@@ -7,10 +7,14 @@
             "properties": {
                 "NiceMessage": {
                     "type": "string"
+                },
+                "NotsoNiceMessage": {
+                    "type": "string"
                 }
             },
             "required": [
-                "NiceMessage"
+                "NiceMessage",
+                "NotsoNiceMessage"
             ]
         }
     },
