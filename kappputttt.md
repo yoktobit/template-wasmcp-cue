@@ -1,0 +1,1 @@
+aktuell werden im Inspektor keine Tools angezeigt...doofn. Aber es könnte daran liegen, dass das Makro zur Erzeugung der Tools einen Pfad für das Input-Schema liest, den es gar nicht gibt, weil er mit einer env-Variable verknüpft.

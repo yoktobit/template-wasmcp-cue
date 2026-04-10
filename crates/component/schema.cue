@@ -19,7 +19,7 @@ import "time"
 }
 
 // Die Eingabewerte für MCP
-Input: #PersonalData
+Input: {} & #PersonalData
 
 // Die Ausgabewerte für MCP
 Output: #Message

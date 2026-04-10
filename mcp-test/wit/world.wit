@@ -1,0 +1,26 @@
+package wasmcp:mcp-test@0.1.0;
+
+/// mcp-test MCP tools capability component
+///
+/// This component exports the tools interface.
+/// The CLI will automatically wrap it with tools-middleware for composition.
+interface api {
+    record personal-data {
+        birthdate: string,
+        forename: string,
+        name: string,
+        wish: string,
+    }
+
+    record message {
+        nice-message: string,
+        notso-nice-message: string,
+    }
+
+    run: func(input: personal-data) -> message;
+}
+
+world mcp-test {
+    import api;
+    export wasmcp:mcp-v20251125/tools@0.1.1;
+}
