@@ -1,10 +1,11 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use serde_json::{Map, Value};
+use jsonschema_to_wit::{generate_wit_from_files, WitConfig};
+use serde_json::Value;
 
 fn write_if_changed(path: &Path, contents: &str) {
     if fs::read_to_string(path).ok().as_deref() == Some(contents) {
@@ -16,23 +17,46 @@ fn write_if_changed(path: &Path, contents: &str) {
             .unwrap_or_else(|e| panic!("failed to create {}: {e}", parent.display()));
     }
 
-    fs::write(path, contents).unwrap_or_else(|e| panic!("failed to write {}: {e}", path.display()));
+    let temp_path = path.with_file_name(format!(
+        ".{}.{}.tmp",
+        std::process::id(),
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("generated")
+    ));
+
+    fs::write(&temp_path, contents)
+        .unwrap_or_else(|e| panic!("failed to write {}: {e}", temp_path.display()));
+    fs::rename(&temp_path, path).unwrap_or_else(|e| {
+        panic!(
+            "failed to move {} to {}: {e}",
+            temp_path.display(),
+            path.display()
+        )
+    });
 }
 
-fn run_cue(manifest_dir: &Path, expr: &str, output_file: &str) {
+fn run_cue(workspace_dir: &Path, expr: &str, output_file: &str) {
+    let output_path = workspace_dir.join(output_file);
+    let temp_output_file = format!(
+        ".{}.{}",
+        env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "schema".to_string()),
+        output_file
+    );
+
     let status = Command::new("mise")
-        .current_dir(manifest_dir)
+        .current_dir(workspace_dir)
         .args([
             "x",
             "--",
             "cue",
             "def",
-            "-f",
+            "--force",
             "schema.cue",
             "-e",
             expr,
             "-o",
-            &format!("jsonschema:{output_file}"),
+            &format!("jsonschema:{temp_output_file}"),
         ])
         .status()
         .unwrap_or_else(|e| panic!("failed to execute `cue`: {e}"));
@@ -41,6 +65,49 @@ fn run_cue(manifest_dir: &Path, expr: &str, output_file: &str) {
         status.success(),
         "`cue def` failed while generating {output_file}. Is `cue` installed and on PATH?"
     );
+
+    let temp_output_path = workspace_dir.join(&temp_output_file);
+    let contents = fs::read_to_string(&temp_output_path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", temp_output_path.display()));
+    write_if_changed(&output_path, &contents);
+    let _ = fs::remove_file(temp_output_path);
+}
+
+fn export_cue_json(workspace_dir: &Path, expr: &str, output_file: &str) {
+    let output_path = workspace_dir.join(output_file);
+    let temp_output_file = format!(
+        ".{}.{}",
+        env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "schema".to_string()),
+        output_file
+    );
+
+    let status = Command::new("mise")
+        .current_dir(workspace_dir)
+        .args([
+            "x",
+            "--",
+            "cue",
+            "export",
+            "--force",
+            "schema.cue",
+            "-e",
+            expr,
+            "-o",
+            &format!("json:{temp_output_file}"),
+        ])
+        .status()
+        .unwrap_or_else(|e| panic!("failed to execute `cue export`: {e}"));
+
+    assert!(
+        status.success(),
+        "`cue export` failed while generating {output_file}. Is `cue` installed and on PATH?"
+    );
+
+    let temp_output_path = workspace_dir.join(&temp_output_file);
+    let contents = fs::read_to_string(&temp_output_path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", temp_output_path.display()));
+    write_if_changed(&output_path, &contents);
+    let _ = fs::remove_file(temp_output_path);
 }
 
 fn is_trivial_alias(schema: &Value) -> bool {
@@ -130,238 +197,99 @@ fn decode_ref_name(reference: &str) -> String {
         .to_string()
 }
 
-fn to_kebab_case(name: &str) -> String {
-    let mut out = String::new();
-    let mut last_was_separator = false;
-
-    for (index, ch) in name.chars().enumerate() {
-        if ch.is_ascii_alphanumeric() {
-            if ch.is_ascii_uppercase() {
-                if index > 0 && !last_was_separator && !out.ends_with('-') {
-                    out.push('-');
-                }
-                out.push(ch.to_ascii_lowercase());
-            } else {
-                out.push(ch.to_ascii_lowercase());
-            }
-            last_was_separator = false;
-        } else if !out.is_empty() && !last_was_separator {
-            out.push('-');
-            last_was_separator = true;
-        }
-    }
-
-    out.trim_matches('-').to_string()
-}
-
-fn escape_wit_ident(name: &str) -> String {
-    match name {
-        "type" | "record" | "enum" | "variant" | "flags" | "world" | "interface"
-        | "use" | "func" | "export" | "import" | "package" | "include" | "with"
-        | "from" | "static" | "resource" | "string" | "option" | "result" | "list" => {
-            format!("%{name}")
-        }
-        _ => name.to_string(),
-    }
-}
-
-fn required_properties(schema: &Value) -> BTreeSet<String> {
-    schema
-        .get("required")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-        .map(ToOwned::to_owned)
-        .collect()
-}
-
-fn find_def<'a>(defs: &'a Map<String, Value>, def_name: &str) -> &'a Value {
-    defs.iter()
-        .find_map(|(key, value)| {
-            let cleaned = key.trim_start_matches('#');
-            if cleaned == def_name || key == def_name {
-                Some(value)
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| panic!("missing schema definition for {def_name}"))
-}
-
-fn schema_to_wit_type(
-    logical_name: &str,
-    schema: &Value,
-    defs: &Map<String, Value>,
-    emitted: &mut BTreeMap<String, String>,
-    order: &mut Vec<String>,
-) -> String {
-    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
-        let def_name = decode_ref_name(reference);
-        let def_schema = find_def(defs, &def_name);
-        return schema_to_wit_type(&def_name, def_schema, defs, emitted, order);
-    }
-
-    if schema.get("properties").is_some() || schema.get("type").and_then(Value::as_str) == Some("object") {
-        return generate_named_record(logical_name, schema, defs, emitted, order);
-    }
-
-    if schema.get("enum").is_some() {
-        return "string".to_string();
-    }
-
-    if let Some(one_of) = schema.get("oneOf").and_then(Value::as_array) {
-        if let Some(first) = one_of.first() {
-            return schema_to_wit_type(logical_name, first, defs, emitted, order);
-        }
-    }
-
-    match schema.get("type").and_then(Value::as_str) {
-        Some("string") => "string".to_string(),
-        Some("integer") => "s64".to_string(),
-        Some("number") => "f64".to_string(),
-        Some("boolean") => "bool".to_string(),
-        Some("array") => {
-            let item_type = schema
-                .get("items")
-                .map(|items| schema_to_wit_type(&format!("{logical_name}-item"), items, defs, emitted, order))
-                .unwrap_or_else(|| "string".to_string());
-            format!("list<{item_type}>")
-        }
-        Some(other) => panic!("unsupported schema type `{other}` in {logical_name}"),
-        None => "string".to_string(),
-    }
-}
-
-fn generate_named_record(
-    logical_name: &str,
-    schema: &Value,
-    defs: &Map<String, Value>,
-    emitted: &mut BTreeMap<String, String>,
-    order: &mut Vec<String>,
-) -> String {
-    let record_name = escape_wit_ident(&to_kebab_case(logical_name));
-
-    if emitted.contains_key(&record_name) {
-        return record_name;
-    }
-
-    let properties = schema
-        .get("properties")
-        .and_then(Value::as_object)
-        .unwrap_or_else(|| panic!("expected object schema for {logical_name}"));
-
-    let required = required_properties(schema);
-    let mut fields = Vec::new();
-
-    for (property_name, property_schema) in properties {
-        let field_name = escape_wit_ident(&to_kebab_case(property_name));
-        let mut field_type = schema_to_wit_type(
-            &format!("{logical_name}-{property_name}"),
-            property_schema,
-            defs,
-            emitted,
-            order,
-        );
-
-        if !required.contains(property_name) {
-            field_type = format!("option<{field_type}>");
-        }
-
-        fields.push(format!("    {field_name}: {field_type},"));
-    }
-
-    let mut record = format!("record {record_name} {{\n");
-    if !fields.is_empty() {
-        record.push_str(&fields.join("\n"));
-        record.push('\n');
-    }
-    record.push('}');
-
-    emitted.insert(record_name.clone(), record);
-    order.push(record_name.clone());
-    record_name
-}
-
-fn resolve_root_type(
-    schema: &Value,
-    fallback_name: &str,
-    emitted: &mut BTreeMap<String, String>,
-    order: &mut Vec<String>,
-) -> String {
-    let defs = schema
-        .get("$defs")
-        .and_then(Value::as_object)
-        .unwrap_or_else(|| panic!("schema is missing `$defs`"));
-
-    let logical_name = schema
-        .get("$ref")
-        .and_then(Value::as_str)
-        .map(decode_ref_name)
-        .unwrap_or_else(|| fallback_name.to_string());
-
-    if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
-        let def_name = decode_ref_name(reference);
-        let root_schema = find_def(defs, &def_name);
-        schema_to_wit_type(&logical_name, root_schema, defs, emitted, order)
-    } else {
-        schema_to_wit_type(&logical_name, schema, defs, emitted, order)
-    }
-}
-
-fn generate_component_wit(manifest_dir: &Path) {
-    let input_schema_path = manifest_dir.join("_input.schema.json");
-    let output_schema_path = manifest_dir.join("_output.schema.json");
-    let wit_path = manifest_dir.join("wit/world.wit");
-
-    let input_schema: Value = serde_json::from_str(
-        &fs::read_to_string(&input_schema_path)
-            .unwrap_or_else(|e| panic!("failed to read {}: {e}", input_schema_path.display())),
+fn schema_names_for_component(mcp_tools_path: &Path) -> (String, String) {
+    let tools: Value = serde_json::from_str(
+        &fs::read_to_string(mcp_tools_path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", mcp_tools_path.display())),
     )
-    .unwrap_or_else(|e| panic!("failed to parse {}: {e}", input_schema_path.display()));
+    .unwrap_or_else(|e| panic!("failed to parse {}: {e}", mcp_tools_path.display()));
 
-    let output_schema: Value = serde_json::from_str(
-        &fs::read_to_string(&output_schema_path)
-            .unwrap_or_else(|e| panic!("failed to read {}: {e}", output_schema_path.display())),
-    )
-    .unwrap_or_else(|e| panic!("failed to parse {}: {e}", output_schema_path.display()));
+    let tool_map = tools.as_object().unwrap_or_else(|| {
+        panic!(
+            "expected `{}` to contain a JSON object",
+            mcp_tools_path.display()
+        )
+    });
 
-    let mut emitted = BTreeMap::new();
-    let mut order = Vec::new();
+    let mut entries = tool_map.iter();
+    let (tool_name, tool) = entries.next().unwrap_or_else(|| {
+        panic!(
+            "expected at least one tool definition in {}",
+            mcp_tools_path.display()
+        )
+    });
 
-    let input_type = resolve_root_type(&input_schema, "input", &mut emitted, &mut order);
-    let output_type = resolve_root_type(&output_schema, "output", &mut emitted, &mut order);
-    let version = env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.1.0".to_string());
-
-    let mut wit = format!(
-        "package acme:app@{version};\n\n/// Generated from `schema.cue` by `build.rs`. Do not edit manually.\ninterface api {{\n"
+    assert!(
+        entries.next().is_none(),
+        "expected exactly one tool in {} for the single-component template",
+        mcp_tools_path.display()
     );
 
-    for name in order {
-        if let Some(definition) = emitted.get(&name) {
-            for line in definition.lines() {
-                wit.push_str("    ");
-                wit.push_str(line);
-                wit.push('\n');
-            }
-            wit.push('\n');
-        }
-    }
+    let input_schema_name = tool
+        .get("inputSchemaName")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `inputSchemaName`"));
+    let output_schema_name = tool
+        .get("outputSchemaName")
+        .and_then(Value::as_str)
+        .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `outputSchemaName`"));
 
-    wit.push_str(&format!("    run: func(input: {input_type}) -> {output_type};\n"));
-    wit.push_str("}\n\nworld component {\n    export api;\n}\n");
+    (
+        input_schema_name.to_string(),
+        output_schema_name.to_string(),
+    )
+}
+
+fn generate_component_wit(
+    manifest_dir: &Path,
+    input_schema_path: &Path,
+    output_schema_path: &Path,
+) {
+    let wit_path = manifest_dir.join("wit/world.wit");
+    let version = env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.1.0".to_string());
+
+    let wit = generate_wit_from_files(
+        input_schema_path,
+        output_schema_path,
+        &WitConfig {
+            package: "acme:app".to_string(),
+            version,
+            interface: "api".to_string(),
+            world: "component".to_string(),
+            function: "run".to_string(),
+        },
+    )
+    .unwrap_or_else(|e| panic!("failed to generate {}: {e}", wit_path.display()));
 
     write_if_changed(&wit_path, &wit);
 }
 
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
+    let workspace_dir = manifest_dir.join("../..");
+    let mcp_tools_path = workspace_dir.join("_mcpTools.json");
+    let input_schema_path = workspace_dir.join("_input.schema.json");
+    let output_schema_path = workspace_dir.join("_output.schema.json");
 
-    println!("cargo:rerun-if-changed=schema.cue");
+    println!(
+        "cargo:rerun-if-changed={}",
+        workspace_dir.join("schema.cue").display()
+    );
 
-    run_cue(&manifest_dir, "Input", "_input.schema.json");
-    run_cue(&manifest_dir, "Output", "_output.schema.json");
-    normalize_schema_aliases(&manifest_dir.join("_input.schema.json"));
-    normalize_schema_aliases(&manifest_dir.join("_output.schema.json"));
-    generate_component_wit(&manifest_dir);
+    export_cue_json(&workspace_dir, "McpTools", "_mcpTools.json");
+    let (input_schema_name, output_schema_name) = schema_names_for_component(&mcp_tools_path);
+
+    run_cue(
+        &workspace_dir,
+        &format!("Schemas[\"{input_schema_name}\"]"),
+        "_input.schema.json",
+    );
+    run_cue(
+        &workspace_dir,
+        &format!("Schemas[\"{output_schema_name}\"]"),
+        "_output.schema.json",
+    );
+    normalize_schema_aliases(&input_schema_path);
+    normalize_schema_aliases(&output_schema_path);
+    generate_component_wit(&manifest_dir, &input_schema_path, &output_schema_path);
 }

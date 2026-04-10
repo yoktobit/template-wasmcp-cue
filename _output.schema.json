@@ -1,0 +1,23 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "#Schema": {
+            "const": {}
+        }
+    },
+    "type": "object",
+    "additionalProperties": true,
+    "properties": {
+        "NiceMessage": {
+            "type": "string"
+        },
+        "NotsoNiceMessage": {
+            "type": "string"
+        }
+    },
+    "$ref": "#/$defs/%23Schema",
+    "required": [
+        "NiceMessage",
+        "NotsoNiceMessage"
+    ]
+}

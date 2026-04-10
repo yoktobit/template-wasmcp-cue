@@ -1,20 +1,20 @@
 package acme:app@0.1.0;
 
-/// Generated from `schema.cue` by `build.rs`. Do not edit manually.
+/// Generated from JSON Schema. Do not edit manually.
 interface api {
-    record personal-data {
+    record input {
         birthdate: string,
         forename: string,
         name: string,
         wish: string,
     }
 
-    record message {
+    record output {
         nice-message: string,
         notso-nice-message: string,
     }
 
-    run: func(input: personal-data) -> message;
+    run: func(input: input) -> output;
 }
 
 world component {

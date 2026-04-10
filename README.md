@@ -5,7 +5,8 @@ This project is now split into **two crates** so the business component can be r
 | Crate | Purpose |
 | --- | --- |
 | `crates/component` | Reusable WASI component exporting the app-specific WIT interface |
-| `crates/mcp-server` | Thin MCP adapter that exposes the component as a `tools` capability |
+| `crates/jsonschema-to-wit` | Shared converter crate that turns JSON Schema into the component WIT contract |
+| `crates/mcp-server-nice-try` | Thin MCP adapter that exposes the component as a `tools` capability |
 
 ## Build
 
@@ -39,7 +40,8 @@ wasmtime run server.wasm
 ## Layout
 
 - `crates/component/schema.cue` is the source of truth for the input/output schema
-- `crates/component/wit/world.wit` is generated automatically from that schema during build
-- `crates/mcp-server` contains only the MCP-facing adapter logic
+- the root `schema.cue` generates `_mcpTools.json`, `_input.schema.json`, and `_output.schema.json`
+- `crates/jsonschema-to-wit` converts the root JSON Schemas into `crates/component/wit/world.wit`
+- `crates/mcp-server-nice-try` uses the root JSON Schema for MCP tool metadata and calls the component through the generated WIT contract
 
 This keeps the application contract reusable in non-MCP compositions while still producing a ready-to-run MCP server component.

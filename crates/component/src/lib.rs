@@ -7,11 +7,11 @@ mod bindings {
     });
 }
 
-pub use bindings::exports::acme::app::api::{Message, PersonalData};
 use bindings::exports::acme::app::api::Guest;
+pub use bindings::exports::acme::app::api::{Input, Output};
 
-pub fn handle(input: PersonalData) -> Message {
-    Message {
+pub fn handle(input: Input) -> Output {
+    Output {
         nice_message: format!(
             "Hello, {} {}. Best wishes for '{}' on {}!",
             input.forename, input.name, input.wish, input.birthdate
@@ -26,7 +26,7 @@ pub fn handle(input: PersonalData) -> Message {
 struct Component;
 
 impl Guest for Component {
-    fn run(input: PersonalData) -> Message {
+    fn run(input: Input) -> Output {
         handle(input)
     }
 }

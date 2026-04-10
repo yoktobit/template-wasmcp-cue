@@ -3,8 +3,8 @@ mod bindings {
         path: "wit",
         world: "acmeapp",
         with: {
-            "acme:app/api@0.1.0/personal-data": crate::component_api::Input,
-            "acme:app/api@0.1.0/message": crate::component_api::Output,
+            "acme:app/api@0.1.0/input": crate::component_api::Input,
+            "acme:app/api@0.1.0/output": crate::component_api::Output,
         },
         generate_all,
     });
@@ -21,7 +21,7 @@ mcp_tool! {
     name: "acme_app",
     title: "AcmeApp",
     description: "Some cool tool",
-    input_schema: "../component/_input.schema.json",
-    output_schema: "../component/_output.schema.json",
+    input_schema: "../../_input.schema.json",
+    output_schema: "../../_output.schema.json",
     handler: component_api::call,
 }

@@ -1,0 +1,1 @@
+Als nächstes den nice-try ablösen durch den alten Server und dafür aus cue ein paar konstante arrays in eine rust-datei generieren

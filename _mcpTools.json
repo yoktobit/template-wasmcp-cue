@@ -1,0 +1,8 @@
+{
+    "greeter-tool": {
+        "name": "greeter-tool",
+        "description": "greeter-tool",
+        "inputSchemaName": "PersonalData",
+        "outputSchemaName": "Message"
+    }
+}
