@@ -1,3 +1,4 @@
+import "strings"
 import "time"
 //import "list"
 
@@ -18,13 +19,30 @@ import "time"
 McpTools: {
 	for key, val in Tools {
 		"\(key)": {
-			name: val.name
-			description: val.description
-			inputSchemaName: val.inputSchemaName
+			name:             val.name
+			description:      val.description
+			inputSchemaName:  val.inputSchemaName
 			outputSchemaName: val.outputSchemaName
 		}
 	}
 }
+
+_RustToolLists: {
+	names:             [for _, tool in McpTools { "\"\(tool.name)\"" }]
+	titles:            [for _, tool in McpTools { "\"\(tool.name)\"" }]
+	descriptions:      [for _, tool in McpTools { "\"\(tool.description)\"" }]
+	inputSchemaNames:  [for _, tool in McpTools { "\"\(tool.inputSchemaName)\"" }]
+	outputSchemaNames: [for _, tool in McpTools { "\"\(tool.outputSchemaName)\"" }]
+}
+
+RustToolConstants: """
+// Generated from `schema.cue` by `cue export`. Do not edit manually.
+pub const TOOL_NAMES: &[&str] = &[\(strings.Join(_RustToolLists.names, ", "))];
+pub const TOOL_TITLES: &[&str] = &[\(strings.Join(_RustToolLists.titles, ", "))];
+pub const TOOL_DESCRIPTIONS: &[&str] = &[\(strings.Join(_RustToolLists.descriptions, ", "))];
+pub const INPUT_SCHEMA_NAMES: &[&str] = &[\(strings.Join(_RustToolLists.inputSchemaNames, ", "))];
+pub const OUTPUT_SCHEMA_NAMES: &[&str] = &[\(strings.Join(_RustToolLists.outputSchemaNames, ", "))];
+"""
 
 #Schemas: [N=string]: #Schema & {
 	_$name: N
