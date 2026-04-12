@@ -64,6 +64,11 @@ Tools: #Tools & {
 		description:  "greeter-tool"
 		inputSchema:  Schemas.PersonalData
 		outputSchema: Schemas.Message
+	},
+	"ask-pet-health": {
+		description: "asks, if your pet is ok"
+		inputSchema: Schemas.Pet
+		outputSchema: Schemas.Message
 	}
 }
 
@@ -83,5 +88,10 @@ Schemas: #Schemas & {
 		// The Greeting
 		NiceMessage:      string
 		NotsoNiceMessage: string
+	}
+	// Pet
+	Pet: {
+		petType: string & ("dog" | "cat")
+		name: string
 	}
 }

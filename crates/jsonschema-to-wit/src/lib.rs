@@ -14,6 +14,13 @@ pub struct WitConfig {
     pub function: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolFunction {
+    pub name: String,
+    pub input_schema_name: String,
+    pub output_schema_name: String,
+}
+
 impl Default for WitConfig {
     fn default() -> Self {
         Self {
@@ -55,6 +62,15 @@ pub fn generate_wit_from_files(
     generate_wit(&input_schema, &output_schema, config)
 }
 
+pub fn generate_wit_for_tools_from_file(
+    all_schemas_path: impl AsRef<Path>,
+    tool_functions: &[ToolFunction],
+    config: &WitConfig,
+) -> Result<String> {
+    let all_schemas = read_schema(all_schemas_path.as_ref())?;
+    generate_wit_for_tools(&all_schemas, tool_functions, config)
+}
+
 pub fn generate_wit(
     input_schema: &Value,
     output_schema: &Value,
@@ -88,6 +104,76 @@ pub fn generate_wit(
     wit.push_str(&format!(
         "    {function_name}: func(input: {input_type}) -> {output_type};\n"
     ));
+    wit.push_str(&format!(
+        "}}\n\nworld {world_name} {{\n    export {interface_name};\n}}\n"
+    ));
+
+    Ok(wit)
+}
+
+pub fn generate_wit_for_tools(
+    all_schemas: &Value,
+    tool_functions: &[ToolFunction],
+    config: &WitConfig,
+) -> Result<String> {
+    if tool_functions.is_empty() {
+        return Err(Error::new("expected at least one tool function"));
+    }
+
+    let mut emitted = BTreeMap::new();
+    let mut order = Vec::new();
+    let interface_name = escape_wit_ident(&to_kebab_case(&config.interface));
+    let world_name = escape_wit_ident(&to_kebab_case(&config.world));
+    let schemas = all_schema_properties(all_schemas)?;
+    let empty_defs = Map::new();
+    let defs = all_schemas
+        .get("$defs")
+        .and_then(Value::as_object)
+        .unwrap_or(&empty_defs);
+
+    let mut function_lines = Vec::with_capacity(tool_functions.len());
+    for tool in tool_functions {
+        let function_name = escape_wit_ident(&to_kebab_case(&tool.name));
+        let input_schema = find_def(schemas, &tool.input_schema_name)?;
+        let output_schema = find_def(schemas, &tool.output_schema_name)?;
+        let input_type = schema_to_wit_type(
+            &tool.input_schema_name,
+            input_schema,
+            defs,
+            &mut emitted,
+            &mut order,
+        )?;
+        let output_type = schema_to_wit_type(
+            &tool.output_schema_name,
+            output_schema,
+            defs,
+            &mut emitted,
+            &mut order,
+        )?;
+
+        function_lines.push(format!(
+            "    {function_name}: func(input: {input_type}) -> {output_type};"
+        ));
+    }
+
+    let mut wit = format!(
+        "package {}@{};\n\n/// Generated from JSON Schema. Do not edit manually.\ninterface {} {{\n",
+        config.package, config.version, interface_name
+    );
+
+    for name in order {
+        if let Some(definition) = emitted.get(&name) {
+            for line in definition.lines() {
+                wit.push_str("    ");
+                wit.push_str(line);
+                wit.push('\n');
+            }
+            wit.push('\n');
+        }
+    }
+
+    wit.push_str(&function_lines.join("\n"));
+    wit.push('\n');
     wit.push_str(&format!(
         "}}\n\nworld {world_name} {{\n    export {interface_name};\n}}\n"
     ));
@@ -146,6 +232,17 @@ fn escape_wit_ident(name: &str) -> String {
         }
         _ => name.to_string(),
     }
+}
+
+fn all_schema_properties(all_schemas: &Value) -> Result<&Map<String, Value>> {
+    all_schemas
+        .get("properties")
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            Error::new(
+                "expected all-schemas JSON Schema document to contain an object `properties` field",
+            )
+        })
 }
 
 fn required_properties(schema: &Value) -> BTreeSet<String> {
@@ -474,5 +571,65 @@ mod tests {
         assert!(wit.contains("record output"));
         assert!(wit.contains("message: string"));
         assert!(wit.contains("run: func(input: input) -> output;"));
+    }
+
+    #[test]
+    fn generates_multiple_functions_from_all_schemas() {
+        let all_schemas = json!({
+            "type": "object",
+            "properties": {
+                "PersonalData": {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string" }
+                    },
+                    "required": ["name"]
+                },
+                "Message": {
+                    "type": "object",
+                    "properties": {
+                        "text": { "type": "string" }
+                    },
+                    "required": ["text"]
+                },
+                "SearchInput": {
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string" }
+                    },
+                    "required": ["query"]
+                },
+                "SearchOutput": {
+                    "type": "object",
+                    "properties": {
+                        "hits": { "type": "integer" }
+                    },
+                    "required": ["hits"]
+                }
+            }
+        });
+
+        let tools = vec![
+            ToolFunction {
+                name: "greeter-tool".to_string(),
+                input_schema_name: "PersonalData".to_string(),
+                output_schema_name: "Message".to_string(),
+            },
+            ToolFunction {
+                name: "search-tool".to_string(),
+                input_schema_name: "SearchInput".to_string(),
+                output_schema_name: "SearchOutput".to_string(),
+            },
+        ];
+
+        let wit = generate_wit_for_tools(&all_schemas, &tools, &WitConfig::default())
+            .expect("WIT should be generated");
+
+        assert!(wit.contains("record personal-data"));
+        assert!(wit.contains("record message"));
+        assert!(wit.contains("record search-input"));
+        assert!(wit.contains("record search-output"));
+        assert!(wit.contains("greeter-tool: func(input: personal-data) -> message;"));
+        assert!(wit.contains("search-tool: func(input: search-input) -> search-output;"));
     }
 }

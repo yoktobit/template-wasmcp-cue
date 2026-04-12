@@ -26,12 +26,15 @@ use component_api_bindings::acme::app::api as component_api;
 
 const INPUT_SCHEMA: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/../../_input.schema.json"
+    "/../../_all_schemas.schema.json"
 ));
-const OUTPUT_SCHEMA: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/../../_output.schema.json"
-));
+
+mod tool_dispatch {
+    use super::bindings::wasmcp::mcp_v20251125::mcp::CallToolResult;
+    use super::{component_api, serialize_output, success_result};
+
+    include!(concat!(env!("OUT_DIR"), "/tool_dispatch.rs"));
+}
 
 struct AcmeTools;
 
@@ -59,11 +62,8 @@ impl Guest for AcmeTools {
         }
 
         let args = request.arguments.as_deref().unwrap_or("{}");
-        let result = match parse_input(args) {
-            Ok(input) => {
-                let output = component_api::run(&input);
-                success_result(serialize_output(output))
-            }
+        let result = match tool_dispatch::call_component_tool(&request.name, args) {
+            Ok(result) => result,
             Err(error) => error_result(format!("Invalid input: {error}")),
         };
 
@@ -71,11 +71,7 @@ impl Guest for AcmeTools {
     }
 }
 
-fn parse_input(arguments: &str) -> Result<component_api::Input, String> {
-    serde_json::from_str(arguments).map_err(|error| format!("invalid JSON arguments: {error}"))
-}
-
-fn serialize_output(output: component_api::Output) -> String {
+fn serialize_output<T: serde::Serialize>(output: T) -> String {
     serde_json::to_string(&output)
         .unwrap_or_else(|error| format!("{{\"error\":\"serialization failed: {error}\"}}"))
 }
@@ -85,17 +81,28 @@ fn build_tools() -> Vec<Tool> {
         .iter()
         .map(|tool| Tool {
             name: tool.name.to_string(),
-            input_schema: INPUT_SCHEMA.to_string(),
+            input_schema: lookup_schema(tool.input_schema_name)
+                .unwrap_or_else(|| "{}".to_string()),
             options: Some(ToolOptions {
                 meta: None,
                 icons: None,
                 annotations: None,
                 description: Some(tool.description.to_string()),
-                output_schema: Some(OUTPUT_SCHEMA.to_string()),
+                output_schema: Some(
+                    lookup_schema(tool.output_schema_name).unwrap_or_else(|| "{}".to_string()),
+                ),
                 title: Some(tool.title.to_string()),
             }),
         })
         .collect()
+}
+
+fn lookup_schema(schema_name: &str) -> Option<String> {
+    let root: serde_json::Value = serde_json::from_str(INPUT_SCHEMA).ok()?;
+    root.get("properties")
+        .and_then(serde_json::Value::as_object)
+        .and_then(|properties| properties.get(schema_name))
+        .and_then(|schema| serde_json::to_string(schema).ok())
 }
 
 fn success_result(text: String) -> CallToolResult {

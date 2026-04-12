@@ -5,6 +5,12 @@ use std::process::Command;
 
 use serde_json::Value;
 
+#[derive(Debug, Clone)]
+struct ToolBinding {
+    tool_name: String,
+    input_schema_name: String,
+}
+
 fn write_if_changed(destination: &Path, contents: &str) {
     if let Some(parent) = destination.parent() {
         fs::create_dir_all(parent)
@@ -124,8 +130,7 @@ fn export_tool_constants(workspace_dir: &Path, destination: &Path) {
     );
 }
 
-fn schema_names_for_component(tools: &Value) -> (String, String) {
-
+fn tool_bindings_for_component(tools: &Value) -> Vec<ToolBinding> {
     let tool_map = tools.as_object().unwrap_or_else(|| {
         panic!(
             "expected `{}` to contain a JSON object",
@@ -133,52 +138,108 @@ fn schema_names_for_component(tools: &Value) -> (String, String) {
         )
     });
 
-    let mut entries = tool_map.values();
-    let tool = entries.next().unwrap_or_else(|| {
-        panic!(
-            "expected at least one tool definition in {}",
-            "cue export McpTools"
-        )
-    });
+    let mut bindings = Vec::with_capacity(tool_map.len());
+    for (tool_name, tool) in tool_map {
+        let input_schema_name = tool
+            .get("inputSchemaName")
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `inputSchemaName`"));
+        let output_schema_name = tool
+            .get("outputSchemaName")
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `outputSchemaName`"));
+        let _ = output_schema_name;
+
+        bindings.push(ToolBinding {
+            tool_name: tool_name.to_string(),
+            input_schema_name: input_schema_name.to_string(),
+        });
+    }
 
     assert!(
-        entries.next().is_none(),
-        "expected exactly one tool in cue export McpTools for the single-component template"
+        !bindings.is_empty(),
+        "expected at least one tool definition in cue export McpTools"
     );
 
-    let input_schema_name = tool
-        .get("inputSchemaName")
-        .and_then(Value::as_str)
-        .unwrap_or_else(|| panic!("tool definition is missing `inputSchemaName`"));
-    let output_schema_name = tool
-        .get("outputSchemaName")
-        .and_then(Value::as_str)
-        .unwrap_or_else(|| panic!("tool definition is missing `outputSchemaName`"));
-
-    (
-        input_schema_name.to_string(),
-        output_schema_name.to_string(),
-    )
+    bindings
 }
 
 fn ensure_root_schemas(workspace_dir: &Path) {
-    let tools = cue_export_json(workspace_dir, "McpTools");
-    let (input_schema_name, output_schema_name) = schema_names_for_component(&tools);
+    run_cue(
+        workspace_dir,
+        "def",
+        "Schemas",
+        "jsonschema",
+        "_all_schemas.schema.json",
+    );
+}
 
-    run_cue(
-        workspace_dir,
-        "def",
-        &format!("Schemas[\"{input_schema_name}\"]"),
-        "jsonschema",
-        "_input.schema.json",
+fn to_snake_case(name: &str) -> String {
+    let mut out = String::new();
+    let mut last_was_separator = false;
+
+    for (index, ch) in name.chars().enumerate() {
+        if ch.is_ascii_alphanumeric() {
+            if ch.is_ascii_uppercase() {
+                if index > 0 && !last_was_separator && !out.ends_with('_') {
+                    out.push('_');
+                }
+                out.push(ch.to_ascii_lowercase());
+            } else {
+                out.push(ch.to_ascii_lowercase());
+            }
+            last_was_separator = false;
+        } else if !out.is_empty() && !last_was_separator {
+            out.push('_');
+            last_was_separator = true;
+        }
+    }
+
+    out.trim_matches('_').to_string()
+}
+
+fn to_pascal_case(name: &str) -> String {
+    let mut out = String::new();
+    let mut new_word = true;
+
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() {
+            if new_word {
+                out.push(ch.to_ascii_uppercase());
+                new_word = false;
+            } else {
+                out.push(ch);
+            }
+        } else {
+            new_word = true;
+        }
+    }
+
+    out
+}
+
+fn generate_tool_dispatch(destination: &Path, tools: &[ToolBinding]) {
+    let mut source = String::from(
+        "// Generated from `schema.cue` by `build.rs`. Do not edit manually.\n",
     );
-    run_cue(
-        workspace_dir,
-        "def",
-        &format!("Schemas[\"{output_schema_name}\"]"),
-        "jsonschema",
-        "_output.schema.json",
+    source.push_str(
+        "pub fn call_component_tool(\n    tool_name: &str,\n    args: &str,\n) -> Result<CallToolResult, String> {\n    match tool_name {\n",
     );
+
+    for tool in tools {
+        let function_name = to_snake_case(&tool.tool_name);
+        let input_type = to_pascal_case(&tool.input_schema_name);
+        source.push_str(&format!(
+            "        \"{}\" => {{\n            let input: component_api::{} = serde_json::from_str(args)\n                .map_err(|error| format!(\"invalid JSON arguments: {{error}}\"))?;\n            let output = component_api::{}(&input);\n            Ok(success_result(serialize_output(output)))\n        }}\n",
+            tool.tool_name, input_type, function_name
+        ));
+    }
+
+    source.push_str(
+        "        _ => Err(format!(\"tool `{tool_name}` has no generated component binding\")),\n    }\n}\n",
+    );
+
+    write_if_changed(destination, &source);
 }
 
 fn main() {
@@ -188,11 +249,18 @@ fn main() {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("missing CARGO_MANIFEST_DIR");
     let workspace_dir = Path::new(&manifest_dir).join("../..");
     let out_dir = env::var("OUT_DIR").expect("missing OUT_DIR");
+    let tools = cue_export_json(&workspace_dir, "McpTools");
+    let bindings = tool_bindings_for_component(&tools);
 
     ensure_root_schemas(&workspace_dir);
     copy_if_changed("../component/wit/world.wit", "wit/deps/acme-app.wit");
+    copy_if_changed(
+        "../component/wit/world.wit",
+        "wit/component-client/deps/acme-app.wit",
+    );
     export_tool_constants(
         &workspace_dir,
         &Path::new(&out_dir).join("tool_constants.rs"),
     );
+    generate_tool_dispatch(&Path::new(&out_dir).join("tool_dispatch.rs"), &bindings);
 }

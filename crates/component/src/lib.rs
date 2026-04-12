@@ -8,13 +8,13 @@ mod bindings {
 }
 
 use bindings::exports::acme::app::api::Guest;
-pub use bindings::exports::acme::app::api::{Input, Output};
+use crate::bindings::exports::acme::app::api::{Message, PersonalData, Pet};
 
 struct Component;
 
 impl Guest for Component {
-    fn run(input: Input) -> Output {
-        Output {
+    fn greeter_tool(input: PersonalData) -> Message {
+        Message {
             nice_message: format!(
                 "Hello, {} {}. Best wishes for '{}' on {}!",
                 input.forename, input.name, input.wish, input.birthdate
@@ -22,6 +22,17 @@ impl Guest for Component {
             notso_nice_message: format!(
                 "If '{}' takes longer than expected, you'll still have to do some work yourself, {}.",
                 input.wish, input.name
+            ),
+        }
+    }
+
+    fn ask_pet_health(input: Pet) -> Message {
+        Message {
+            nice_message: format!(
+                "How is your {}, {}?", input.pet_type, input.name
+            ),
+            notso_nice_message: format!(
+                "Is your {}, {}, dead already?", input.pet_type, input.name
             ),
         }
     }

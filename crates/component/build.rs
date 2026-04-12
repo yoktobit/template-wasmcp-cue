@@ -4,8 +4,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use jsonschema_to_wit::{generate_wit_from_files, WitConfig};
+use jsonschema_to_wit::{generate_wit_for_tools_from_file, ToolFunction, WitConfig};
 use serde_json::Value;
+
+#[derive(Debug, Clone)]
+struct ToolBinding {
+    tool_name: String,
+    input_schema_name: String,
+    output_schema_name: String,
+}
 
 fn write_if_changed(path: &Path, contents: &str) {
     if fs::read_to_string(path).ok().as_deref() == Some(contents) {
@@ -176,7 +183,7 @@ fn decode_ref_name(reference: &str) -> String {
         .to_string()
 }
 
-fn schema_names_for_component(tools: &Value) -> (String, String) {
+fn tool_bindings_for_component(tools: &Value) -> Vec<ToolBinding> {
     let tool_map = tools.as_object().unwrap_or_else(|| {
         panic!(
             "expected `{}` to contain a JSON object",
@@ -184,45 +191,51 @@ fn schema_names_for_component(tools: &Value) -> (String, String) {
         )
     });
 
-    let mut entries = tool_map.iter();
-    let (tool_name, tool) = entries.next().unwrap_or_else(|| {
-        panic!(
-            "expected at least one tool definition in {}",
-            "cue export McpTools"
-        )
-    });
+    let mut bindings = Vec::with_capacity(tool_map.len());
+    for (tool_name, tool) in tool_map {
+        let input_schema_name = tool
+            .get("inputSchemaName")
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `inputSchemaName`"));
+        let output_schema_name = tool
+            .get("outputSchemaName")
+            .and_then(Value::as_str)
+            .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `outputSchemaName`"));
+
+        bindings.push(ToolBinding {
+            tool_name: tool_name.to_string(),
+            input_schema_name: input_schema_name.to_string(),
+            output_schema_name: output_schema_name.to_string(),
+        });
+    }
 
     assert!(
-        entries.next().is_none(),
-        "expected exactly one tool in cue export McpTools for the single-component template"
+        !bindings.is_empty(),
+        "expected at least one tool definition in cue export McpTools"
     );
 
-    let input_schema_name = tool
-        .get("inputSchemaName")
-        .and_then(Value::as_str)
-        .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `inputSchemaName`"));
-    let output_schema_name = tool
-        .get("outputSchemaName")
-        .and_then(Value::as_str)
-        .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `outputSchemaName`"));
-
-    (
-        input_schema_name.to_string(),
-        output_schema_name.to_string(),
-    )
+    bindings
 }
 
 fn generate_component_wit(
     manifest_dir: &Path,
-    input_schema_path: &Path,
-    output_schema_path: &Path,
+    all_schemas_path: &Path,
+    tool_bindings: &[ToolBinding],
 ) {
     let wit_path = manifest_dir.join("wit/world.wit");
     let version = env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.1.0".to_string());
+    let tool_functions = tool_bindings
+        .iter()
+        .map(|tool| ToolFunction {
+            name: tool.tool_name.clone(),
+            input_schema_name: tool.input_schema_name.clone(),
+            output_schema_name: tool.output_schema_name.clone(),
+        })
+        .collect::<Vec<_>>();
 
-    let wit = generate_wit_from_files(
-        input_schema_path,
-        output_schema_path,
+    let wit = generate_wit_for_tools_from_file(
+        all_schemas_path,
+        &tool_functions,
         &WitConfig {
             package: "acme:app".to_string(),
             version,
@@ -239,8 +252,7 @@ fn generate_component_wit(
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
     let workspace_dir = manifest_dir.join("../..");
-    let input_schema_path = workspace_dir.join("_input.schema.json");
-    let output_schema_path = workspace_dir.join("_output.schema.json");
+    let all_schemas_path = workspace_dir.join("_all_schemas.schema.json");
 
     println!(
         "cargo:rerun-if-changed={}",
@@ -248,19 +260,9 @@ fn main() {
     );
 
     let tools = cue_export_json(&workspace_dir, "McpTools");
-    let (input_schema_name, output_schema_name) = schema_names_for_component(&tools);
+    let tool_bindings = tool_bindings_for_component(&tools);
 
-    run_cue(
-        &workspace_dir,
-        &format!("Schemas[\"{input_schema_name}\"]"),
-        "_input.schema.json",
-    );
-    run_cue(
-        &workspace_dir,
-        &format!("Schemas[\"{output_schema_name}\"]"),
-        "_output.schema.json",
-    );
-    normalize_schema_aliases(&input_schema_path);
-    normalize_schema_aliases(&output_schema_path);
-    generate_component_wit(&manifest_dir, &input_schema_path, &output_schema_path);
+    run_cue(&workspace_dir, "Schemas", "_all_schemas.schema.json");
+    normalize_schema_aliases(&all_schemas_path);
+    generate_component_wit(&manifest_dir, &all_schemas_path, &tool_bindings);
 }
