@@ -181,6 +181,123 @@ pub fn generate_wit_for_tools(
     Ok(wit)
 }
 
+pub fn normalize_trivial_aliases(schema: &mut Value) {
+    let trivial_defs = schema
+        .get("$defs")
+        .and_then(Value::as_object)
+        .map(|defs| {
+            defs.iter()
+                .filter_map(|(name, definition)| {
+                    if is_trivial_alias(definition) {
+                        Some((decode_ref_name(name), definition.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
+
+    if trivial_defs.is_empty() {
+        return;
+    }
+
+    inline_trivial_refs(schema, &trivial_defs);
+
+    if let Some(defs) = schema.get_mut("$defs").and_then(Value::as_object_mut) {
+        defs.retain(|name, _| !trivial_defs.contains_key(&decode_ref_name(name)));
+    }
+}
+
+pub fn normalize_json_keys_to_snake(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            let old = std::mem::take(map);
+            for (key, mut nested) in old {
+                normalize_json_keys_to_snake(&mut nested);
+                map.insert(to_snake_case(&key), nested);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                normalize_json_keys_to_snake(item);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
+}
+
+pub fn remap_json_keys_to_schema(value: &mut Value, schema: &Value) {
+    match value {
+        Value::Object(map) => {
+            let properties = schema.get("properties").and_then(Value::as_object);
+
+            if let Some(properties) = properties {
+                let mut canonical_to_schema = BTreeMap::new();
+                for schema_key in properties.keys() {
+                    canonical_to_schema.insert(to_snake_case(schema_key), schema_key.clone());
+                }
+
+                let old = std::mem::take(map);
+                for (key, mut nested) in old {
+                    let canonical = to_snake_case(&key);
+                    let remapped_key = canonical_to_schema
+                        .get(&canonical)
+                        .cloned()
+                        .unwrap_or(key.clone());
+
+                    if let Some(nested_schema) = properties.get(&remapped_key) {
+                        remap_json_keys_to_schema(&mut nested, nested_schema);
+                    } else {
+                        remap_json_keys_to_schema(&mut nested, &Value::Null);
+                    }
+
+                    map.insert(remapped_key, nested);
+                }
+            } else {
+                for nested in map.values_mut() {
+                    remap_json_keys_to_schema(nested, &Value::Null);
+                }
+            }
+        }
+        Value::Array(items) => {
+            let item_schema = schema.get("items").unwrap_or(&Value::Null);
+            for item in items {
+                remap_json_keys_to_schema(item, item_schema);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
+}
+
+pub fn to_snake_case(name: &str) -> String {
+    to_separated_case(name, '_')
+}
+
+pub fn to_kebab_case(name: &str) -> String {
+    to_separated_case(name, '-')
+}
+
+pub fn to_pascal_case(name: &str) -> String {
+    let mut out = String::new();
+    let mut new_word = true;
+
+    for ch in name.chars() {
+        if ch.is_ascii_alphanumeric() {
+            if new_word {
+                out.push(ch.to_ascii_uppercase());
+                new_word = false;
+            } else {
+                out.push(ch);
+            }
+        } else {
+            new_word = true;
+        }
+    }
+
+    out
+}
+
 fn read_schema(path: &Path) -> Result<Value> {
     let contents = fs::read_to_string(path)
         .map_err(|error| Error::new(format!("failed to read {}: {error}", path.display())))?;
@@ -199,15 +316,15 @@ fn decode_ref_name(reference: &str) -> String {
         .to_string()
 }
 
-fn to_kebab_case(name: &str) -> String {
+fn to_separated_case(name: &str, separator: char) -> String {
     let mut out = String::new();
     let mut last_was_separator = false;
 
     for (index, ch) in name.chars().enumerate() {
         if ch.is_ascii_alphanumeric() {
             if ch.is_ascii_uppercase() {
-                if index > 0 && !last_was_separator && !out.ends_with('-') {
-                    out.push('-');
+                if index > 0 && !last_was_separator && !out.ends_with(separator) {
+                    out.push(separator);
                 }
                 out.push(ch.to_ascii_lowercase());
             } else {
@@ -215,12 +332,51 @@ fn to_kebab_case(name: &str) -> String {
             }
             last_was_separator = false;
         } else if !out.is_empty() && !last_was_separator {
-            out.push('-');
+            out.push(separator);
             last_was_separator = true;
         }
     }
 
-    out.trim_matches('-').to_string()
+    out.trim_matches(separator).to_string()
+}
+
+fn is_trivial_alias(schema: &Value) -> bool {
+    let Some(object) = schema.as_object() else {
+        return false;
+    };
+
+    if object.len() != 1 {
+        return false;
+    }
+
+    matches!(
+        object.get("type").and_then(Value::as_str),
+        Some("string" | "integer" | "number" | "boolean")
+    )
+}
+
+fn inline_trivial_refs(value: &mut Value, trivial_defs: &BTreeMap<String, Value>) {
+    match value {
+        Value::Object(map) => {
+            if let Some(reference) = map.get("$ref").and_then(Value::as_str) {
+                let def_name = decode_ref_name(reference);
+                if let Some(replacement) = trivial_defs.get(&def_name) {
+                    *value = replacement.clone();
+                    return;
+                }
+            }
+
+            for nested in map.values_mut() {
+                inline_trivial_refs(nested, trivial_defs);
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                inline_trivial_refs(item, trivial_defs);
+            }
+        }
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
+    }
 }
 
 fn escape_wit_ident(name: &str) -> String {
@@ -631,5 +787,61 @@ mod tests {
         assert!(wit.contains("record search-output"));
         assert!(wit.contains("greeter-tool: func(input: personal-data) -> message;"));
         assert!(wit.contains("search-tool: func(input: search-input) -> search-output;"));
+    }
+
+    #[test]
+    fn normalizes_camel_case_input_keys_to_snake_case() {
+        let mut value = json!({
+            "petType": "cat",
+            "ownerData": {
+                "firstName": "Ada"
+            }
+        });
+
+        normalize_json_keys_to_snake(&mut value);
+
+        assert_eq!(
+            value,
+            json!({
+                "pet_type": "cat",
+                "owner_data": {
+                    "first_name": "Ada"
+                }
+            })
+        );
+    }
+
+    #[test]
+    fn remaps_output_keys_to_schema_shape() {
+        let mut value = json!({
+            "pet_type": "cat",
+            "owner_data": {
+                "first_name": "Ada"
+            }
+        });
+        let schema = json!({
+            "type": "object",
+            "properties": {
+                "petType": { "type": "string" },
+                "ownerData": {
+                    "type": "object",
+                    "properties": {
+                        "firstName": { "type": "string" }
+                    }
+                }
+            }
+        });
+
+        remap_json_keys_to_schema(&mut value, &schema);
+
+        assert_eq!(
+            value,
+            json!({
+                "petType": "cat",
+                "ownerData": {
+                    "firstName": "Ada"
+                }
+            })
+        );
     }
 }

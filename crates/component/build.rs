@@ -1,10 +1,11 @@
-use std::collections::BTreeMap;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use jsonschema_to_wit::{generate_wit_for_tools_from_file, ToolFunction, WitConfig};
+use jsonschema_to_wit::{
+    generate_wit_for_tools_from_file, normalize_trivial_aliases, ToolFunction, WitConfig,
+};
 use serde_json::Value;
 
 #[derive(Debug, Clone)]
@@ -96,45 +97,6 @@ fn cue_export_json(workspace_dir: &Path, expr: &str) -> Value {
         .unwrap_or_else(|e| panic!("failed to parse cue export output as JSON: {e}"))
 }
 
-fn is_trivial_alias(schema: &Value) -> bool {
-    let Some(object) = schema.as_object() else {
-        return false;
-    };
-
-    if object.len() != 1 {
-        return false;
-    }
-
-    matches!(
-        object.get("type").and_then(Value::as_str),
-        Some("string" | "integer" | "number" | "boolean")
-    )
-}
-
-fn inline_trivial_refs(value: &mut Value, trivial_defs: &BTreeMap<String, Value>) {
-    match value {
-        Value::Object(map) => {
-            if let Some(reference) = map.get("$ref").and_then(Value::as_str) {
-                let def_name = decode_ref_name(reference);
-                if let Some(replacement) = trivial_defs.get(&def_name) {
-                    *value = replacement.clone();
-                    return;
-                }
-            }
-
-            for nested in map.values_mut() {
-                inline_trivial_refs(nested, trivial_defs);
-            }
-        }
-        Value::Array(items) => {
-            for item in items {
-                inline_trivial_refs(item, trivial_defs);
-            }
-        }
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
-    }
-}
-
 fn normalize_schema_aliases(schema_path: &Path) {
     let mut schema: Value = serde_json::from_str(
         &fs::read_to_string(schema_path)
@@ -142,45 +104,11 @@ fn normalize_schema_aliases(schema_path: &Path) {
     )
     .unwrap_or_else(|e| panic!("failed to parse {}: {e}", schema_path.display()));
 
-    let trivial_defs = schema
-        .get("$defs")
-        .and_then(Value::as_object)
-        .map(|defs| {
-            defs.iter()
-                .filter_map(|(name, definition)| {
-                    if is_trivial_alias(definition) {
-                        Some((decode_ref_name(name), definition.clone()))
-                    } else {
-                        None
-                    }
-                })
-                .collect::<BTreeMap<_, _>>()
-        })
-        .unwrap_or_default();
-
-    if trivial_defs.is_empty() {
-        return;
-    }
-
-    inline_trivial_refs(&mut schema, &trivial_defs);
-
-    if let Some(defs) = schema.get_mut("$defs").and_then(Value::as_object_mut) {
-        defs.retain(|name, _| !trivial_defs.contains_key(&decode_ref_name(name)));
-    }
+    normalize_trivial_aliases(&mut schema);
 
     let normalized = serde_json::to_string_pretty(&schema)
         .unwrap_or_else(|e| panic!("failed to serialize {}: {e}", schema_path.display()));
     write_if_changed(schema_path, &(normalized + "\n"));
-}
-
-fn decode_ref_name(reference: &str) -> String {
-    reference
-        .rsplit('/')
-        .next()
-        .unwrap_or(reference)
-        .replace("%23", "")
-        .trim_start_matches('#')
-        .to_string()
 }
 
 fn tool_bindings_for_component(tools: &Value) -> Vec<ToolBinding> {
