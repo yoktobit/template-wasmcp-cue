@@ -2,7 +2,7 @@
 members = [
     "crates/component",
     "crates/jsonschema-to-wit",
-    "crates/mcp-server-nice-try",
+    "crates/mcp-server",
 ]
 resolver = "2"
 
