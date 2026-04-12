@@ -9,6 +9,7 @@ use serde_json::Value;
 struct ToolBinding {
     tool_name: String,
     input_schema_name: String,
+    output_schema_name: String,
 }
 
 fn write_if_changed(destination: &Path, contents: &str) {
@@ -148,11 +149,11 @@ fn tool_bindings_for_component(tools: &Value) -> Vec<ToolBinding> {
             .get("outputSchemaName")
             .and_then(Value::as_str)
             .unwrap_or_else(|| panic!("tool `{tool_name}` is missing `outputSchemaName`"));
-        let _ = output_schema_name;
 
         bindings.push(ToolBinding {
             tool_name: tool_name.to_string(),
             input_schema_name: input_schema_name.to_string(),
+            output_schema_name: output_schema_name.to_string(),
         });
     }
 
@@ -230,8 +231,8 @@ fn generate_tool_dispatch(destination: &Path, tools: &[ToolBinding]) {
         let function_name = to_snake_case(&tool.tool_name);
         let input_type = to_pascal_case(&tool.input_schema_name);
         source.push_str(&format!(
-            "        \"{}\" => {{\n            let input: component_api::{} = serde_json::from_str(args)\n                .map_err(|error| format!(\"invalid JSON arguments: {{error}}\"))?;\n            let output = component_api::{}(&input);\n            Ok(success_result(serialize_output(output)))\n        }}\n",
-            tool.tool_name, input_type, function_name
+            "        \"{}\" => {{\n            let input: component_api::{} = parse_component_input(args)?;\n            let output = component_api::{}(&input);\n            let output_json = serialize_output_for_schema(output, \"{}\")?;\n            Ok(success_result(output_json))\n        }}\n",
+            tool.tool_name, input_type, function_name, tool.output_schema_name
         ));
     }
 

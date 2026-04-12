@@ -1,87 +1,90 @@
 {
-  "$defs": {
-    "#Schema": {
-      "const": {}
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "#Schema": {
+            "const": {}
+        },
+        "#Schemas": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": true,
+                "$ref": "#/$defs/%23Schema"
+            }
+        },
+        "Time": {
+            "type": "string"
+        }
     },
-    "#Schemas": {
-      "additionalProperties": {
-        "$ref": "#/$defs/%23Schema",
+    "type": "object",
+    "additionalProperties": {
+        "type": "object",
         "additionalProperties": true,
-        "type": "object"
-      },
-      "type": "object"
-    }
-  },
-  "$ref": "#/$defs/%23Schemas",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": {
-    "$ref": "#/$defs/%23Schema",
-    "additionalProperties": true,
-    "type": "object"
-  },
-  "properties": {
-    "Message": {
-      "properties": {
-        "NiceMessage": {
-          "type": "string"
-        },
-        "NotsoNiceMessage": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "NiceMessage",
-        "NotsoNiceMessage"
-      ],
-      "type": "object"
+        "$ref": "#/$defs/%23Schema"
     },
-    "PersonalData": {
-      "properties": {
-        "birthdate": {
-          "type": "string"
+    "properties": {
+        "Message": {
+            "type": "object",
+            "properties": {
+                "NiceMessage": {
+                    "type": "string"
+                },
+                "NotsoNiceMessage": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "NiceMessage",
+                "NotsoNiceMessage"
+            ]
         },
-        "forename": {
-          "type": "string"
+        "PersonalData": {
+            "type": "object",
+            "properties": {
+                "birthdate": {
+                    "$ref": "#/$defs/Time"
+                },
+                "forename": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "wish": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "birthdate",
+                "forename",
+                "name",
+                "wish"
+            ]
         },
-        "name": {
-          "type": "string"
-        },
-        "wish": {
-          "type": "string"
+        "Pet": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "petType": {
+                    "type": "string",
+                    "enum": [
+                        "dog",
+                        "cat"
+                    ]
+                }
+            },
+            "required": [
+                "name",
+                "petType"
+            ]
         }
-      },
-      "required": [
-        "birthdate",
-        "forename",
-        "name",
-        "wish"
-      ],
-      "type": "object"
     },
-    "Pet": {
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "petType": {
-          "enum": [
-            "dog",
-            "cat"
-          ],
-          "type": "string"
-        }
-      },
-      "required": [
-        "name",
-        "petType"
-      ],
-      "type": "object"
-    }
-  },
-  "required": [
-    "Message",
-    "PersonalData",
-    "Pet"
-  ],
-  "type": "object"
+    "$ref": "#/$defs/%23Schemas",
+    "required": [
+        "Message",
+        "PersonalData",
+        "Pet"
+    ]
 }
