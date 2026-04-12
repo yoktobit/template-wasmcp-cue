@@ -40,7 +40,7 @@ wasmtime run server.wasm
 ## Layout
 
 - `crates/component/schema.cue` is the source of truth for the input/output schema
-- the root `schema.cue` generates `_mcpTools.json`, `_input.schema.json`, and `_output.schema.json`
+- the root `schema.cue` is exported in-memory for MCP tool metadata and generates `_input.schema.json` plus `_output.schema.json`
 - `crates/jsonschema-to-wit` converts the root JSON Schemas into `crates/component/wit/world.wit`
 - `crates/mcp-server-nice-try` uses the root JSON Schema for MCP tool metadata and calls the component through the generated WIT contract
 

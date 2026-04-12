@@ -1,0 +1,22 @@
+package acme:app@0.1.0;
+
+/// Generated from JSON Schema. Do not edit manually.
+interface api {
+    record input {
+        birthdate: string,
+        forename: string,
+        name: string,
+        wish: string,
+    }
+
+    record output {
+        nice-message: string,
+        notso-nice-message: string,
+    }
+
+    run: func(input: input) -> output;
+}
+
+world component {
+    export api;
+}

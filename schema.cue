@@ -28,20 +28,26 @@ McpTools: {
 }
 
 _RustToolLists: {
-	names:             [for _, tool in McpTools { "\"\(tool.name)\"" }]
-	titles:            [for _, tool in McpTools { "\"\(tool.name)\"" }]
-	descriptions:      [for _, tool in McpTools { "\"\(tool.description)\"" }]
-	inputSchemaNames:  [for _, tool in McpTools { "\"\(tool.inputSchemaName)\"" }]
-	outputSchemaNames: [for _, tool in McpTools { "\"\(tool.outputSchemaName)\"" }]
+	specs: [for _, tool in McpTools {
+		"ToolSpec { name: \"\(tool.name)\", title: \"\(tool.name)\", description: \"\(tool.description)\", input_schema_name: \"\(tool.inputSchemaName)\", output_schema_name: \"\(tool.outputSchemaName)\" }"
+	}]
 }
 
 RustToolConstants: """
 // Generated from `schema.cue` by `cue export`. Do not edit manually.
-pub const TOOL_NAMES: &[&str] = &[\(strings.Join(_RustToolLists.names, ", "))];
-pub const TOOL_TITLES: &[&str] = &[\(strings.Join(_RustToolLists.titles, ", "))];
-pub const TOOL_DESCRIPTIONS: &[&str] = &[\(strings.Join(_RustToolLists.descriptions, ", "))];
-pub const INPUT_SCHEMA_NAMES: &[&str] = &[\(strings.Join(_RustToolLists.inputSchemaNames, ", "))];
-pub const OUTPUT_SCHEMA_NAMES: &[&str] = &[\(strings.Join(_RustToolLists.outputSchemaNames, ", "))];
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy)]
+pub struct ToolSpec {
+    pub name: &'static str,
+    pub title: &'static str,
+    pub description: &'static str,
+    pub input_schema_name: &'static str,
+    pub output_schema_name: &'static str,
+}
+
+pub const TOOL_SPECS: &[ToolSpec] = &[
+    \(strings.Join(_RustToolLists.specs, ",\n    "))
+];
 """
 
 #Schemas: [N=string]: #Schema & {

@@ -6,14 +6,23 @@ mod bindings {
     });
 }
 
+mod component_api_bindings {
+    wit_bindgen::generate!({
+        path: "wit/component-client",
+        world: "component-client",
+        generate_all,
+        additional_derives: [serde::Serialize, serde::Deserialize],
+    });
+}
+
 mod tool_constants {
     include!(concat!(env!("OUT_DIR"), "/tool_constants.rs"));
 }
 
-use bindings::acme::app::api;
 use bindings::exports::wasmcp::mcp_v20251125::tools::Guest;
 use bindings::wasmcp::mcp_v20251125::mcp::*;
 use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
+use component_api_bindings::acme::app::api as component_api;
 
 const INPUT_SCHEMA: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
@@ -42,9 +51,9 @@ impl Guest for AcmeTools {
         _ctx: MessageContext,
         request: CallToolRequest,
     ) -> Result<Option<CallToolResult>, ErrorCode> {
-        if !tool_constants::TOOL_NAMES
+        if !tool_constants::TOOL_SPECS
             .iter()
-            .any(|name| request.name == *name)
+            .any(|tool| request.name == tool.name)
         {
             return Ok(None);
         }
@@ -52,7 +61,7 @@ impl Guest for AcmeTools {
         let args = request.arguments.as_deref().unwrap_or("{}");
         let result = match parse_input(args) {
             Ok(input) => {
-                let output = api::run(&input);
+                let output = component_api::run(&input);
                 success_result(serialize_output(output))
             }
             Err(error) => error_result(format!("Invalid input: {error}")),
@@ -62,48 +71,28 @@ impl Guest for AcmeTools {
     }
 }
 
-fn parse_input(arguments: &str) -> Result<api::Input, String> {
-    let json: serde_json::Value = serde_json::from_str(arguments)
-        .map_err(|error| format!("invalid JSON arguments: {error}"))?;
-
-    Ok(api::Input {
-        name: required_string(&json, "name")?,
-        forename: required_string(&json, "forename")?,
-        birthdate: required_string(&json, "birthdate")?,
-        wish: required_string(&json, "wish")?,
-    })
+fn parse_input(arguments: &str) -> Result<component_api::Input, String> {
+    serde_json::from_str(arguments).map_err(|error| format!("invalid JSON arguments: {error}"))
 }
 
-fn required_string(json: &serde_json::Value, field: &str) -> Result<String, String> {
-    json.get(field)
-        .and_then(serde_json::Value::as_str)
-        .map(ToOwned::to_owned)
-        .ok_or_else(|| format!("missing or invalid parameter `{field}`"))
-}
-
-fn serialize_output(output: api::Output) -> String {
-    serde_json::json!({
-        "NiceMessage": output.nice_message,
-        "NotsoNiceMessage": output.notso_nice_message,
-    })
-    .to_string()
+fn serialize_output(output: component_api::Output) -> String {
+    serde_json::to_string(&output)
+        .unwrap_or_else(|error| format!("{{\"error\":\"serialization failed: {error}\"}}"))
 }
 
 fn build_tools() -> Vec<Tool> {
-    tool_constants::TOOL_NAMES
+    tool_constants::TOOL_SPECS
         .iter()
-        .zip(tool_constants::TOOL_TITLES.iter())
-        .zip(tool_constants::TOOL_DESCRIPTIONS.iter())
-        .map(|((name, title), description)| Tool {
-            name: (*name).to_string(),
+        .map(|tool| Tool {
+            name: tool.name.to_string(),
             input_schema: INPUT_SCHEMA.to_string(),
             options: Some(ToolOptions {
                 meta: None,
                 icons: None,
                 annotations: None,
-                description: Some((*description).to_string()),
+                description: Some(tool.description.to_string()),
                 output_schema: Some(OUTPUT_SCHEMA.to_string()),
-                title: Some((*title).to_string()),
+                title: Some(tool.title.to_string()),
             }),
         })
         .collect()

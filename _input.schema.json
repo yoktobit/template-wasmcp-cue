@@ -1,34 +1,31 @@
 {
-    "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$defs": {
-        "#Schema": {
-            "const": {}
-        },
-        "Time": {
-            "type": "string"
-        }
+  "$defs": {
+    "#Schema": {
+      "const": {}
+    }
+  },
+  "$ref": "#/$defs/%23Schema",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "birthdate": {
+      "type": "string"
     },
-    "type": "object",
-    "additionalProperties": true,
-    "properties": {
-        "birthdate": {
-            "$ref": "#/$defs/Time"
-        },
-        "forename": {
-            "type": "string"
-        },
-        "name": {
-            "type": "string"
-        },
-        "wish": {
-            "type": "string"
-        }
+    "forename": {
+      "type": "string"
     },
-    "$ref": "#/$defs/%23Schema",
-    "required": [
-        "birthdate",
-        "forename",
-        "name",
-        "wish"
-    ]
+    "name": {
+      "type": "string"
+    },
+    "wish": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "birthdate",
+    "forename",
+    "name",
+    "wish"
+  ],
+  "type": "object"
 }

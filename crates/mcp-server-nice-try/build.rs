@@ -81,6 +81,22 @@ fn run_cue(workspace_dir: &Path, command: &str, expr: &str, format: &str, output
     let _ = fs::remove_file(temp_output_path);
 }
 
+fn cue_export_json(workspace_dir: &Path, expr: &str) -> Value {
+    let output = Command::new("mise")
+        .current_dir(workspace_dir)
+        .args(["x", "--", "cue", "export", "--force", "schema.cue", "-e", expr])
+        .output()
+        .unwrap_or_else(|e| panic!("failed to execute `cue export`: {e}"));
+
+    assert!(
+        output.status.success(),
+        "`cue export` failed for expression `{expr}` while reading schema metadata. Is `cue` installed and on PATH?"
+    );
+
+    serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|e| panic!("failed to parse cue export output as JSON: {e}"))
+}
+
 fn export_tool_constants(workspace_dir: &Path, destination: &Path) {
     let output_spec = format!("text:{}", destination.display());
 
@@ -108,17 +124,12 @@ fn export_tool_constants(workspace_dir: &Path, destination: &Path) {
     );
 }
 
-fn schema_names_for_component(mcp_tools_path: &Path) -> (String, String) {
-    let tools: Value = serde_json::from_str(
-        &fs::read_to_string(mcp_tools_path)
-            .unwrap_or_else(|e| panic!("failed to read {}: {e}", mcp_tools_path.display())),
-    )
-    .unwrap_or_else(|e| panic!("failed to parse {}: {e}", mcp_tools_path.display()));
+fn schema_names_for_component(tools: &Value) -> (String, String) {
 
     let tool_map = tools.as_object().unwrap_or_else(|| {
         panic!(
             "expected `{}` to contain a JSON object",
-            mcp_tools_path.display()
+            "cue export McpTools"
         )
     });
 
@@ -126,14 +137,13 @@ fn schema_names_for_component(mcp_tools_path: &Path) -> (String, String) {
     let tool = entries.next().unwrap_or_else(|| {
         panic!(
             "expected at least one tool definition in {}",
-            mcp_tools_path.display()
+            "cue export McpTools"
         )
     });
 
     assert!(
         entries.next().is_none(),
-        "expected exactly one tool in {} for the single-component template",
-        mcp_tools_path.display()
+        "expected exactly one tool in cue export McpTools for the single-component template"
     );
 
     let input_schema_name = tool
@@ -152,16 +162,8 @@ fn schema_names_for_component(mcp_tools_path: &Path) -> (String, String) {
 }
 
 fn ensure_root_schemas(workspace_dir: &Path) {
-    let mcp_tools_path = workspace_dir.join("_mcpTools.json");
-
-    run_cue(
-        workspace_dir,
-        "export",
-        "McpTools",
-        "json",
-        "_mcpTools.json",
-    );
-    let (input_schema_name, output_schema_name) = schema_names_for_component(&mcp_tools_path);
+    let tools = cue_export_json(workspace_dir, "McpTools");
+    let (input_schema_name, output_schema_name) = schema_names_for_component(&tools);
 
     run_cue(
         workspace_dir,

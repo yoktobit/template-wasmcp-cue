@@ -73,41 +73,20 @@ fn run_cue(workspace_dir: &Path, expr: &str, output_file: &str) {
     let _ = fs::remove_file(temp_output_path);
 }
 
-fn export_cue_json(workspace_dir: &Path, expr: &str, output_file: &str) {
-    let output_path = workspace_dir.join(output_file);
-    let temp_output_file = format!(
-        ".{}.{}",
-        env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "schema".to_string()),
-        output_file
-    );
-
-    let status = Command::new("mise")
+fn cue_export_json(workspace_dir: &Path, expr: &str) -> Value {
+    let output = Command::new("mise")
         .current_dir(workspace_dir)
-        .args([
-            "x",
-            "--",
-            "cue",
-            "export",
-            "--force",
-            "schema.cue",
-            "-e",
-            expr,
-            "-o",
-            &format!("json:{temp_output_file}"),
-        ])
-        .status()
+        .args(["x", "--", "cue", "export", "--force", "schema.cue", "-e", expr])
+        .output()
         .unwrap_or_else(|e| panic!("failed to execute `cue export`: {e}"));
 
     assert!(
-        status.success(),
-        "`cue export` failed while generating {output_file}. Is `cue` installed and on PATH?"
+        output.status.success(),
+        "`cue export` failed for expression `{expr}` while reading schema metadata. Is `cue` installed and on PATH?"
     );
 
-    let temp_output_path = workspace_dir.join(&temp_output_file);
-    let contents = fs::read_to_string(&temp_output_path)
-        .unwrap_or_else(|e| panic!("failed to read {}: {e}", temp_output_path.display()));
-    write_if_changed(&output_path, &contents);
-    let _ = fs::remove_file(temp_output_path);
+    serde_json::from_slice(&output.stdout)
+        .unwrap_or_else(|e| panic!("failed to parse cue export output as JSON: {e}"))
 }
 
 fn is_trivial_alias(schema: &Value) -> bool {
@@ -197,17 +176,11 @@ fn decode_ref_name(reference: &str) -> String {
         .to_string()
 }
 
-fn schema_names_for_component(mcp_tools_path: &Path) -> (String, String) {
-    let tools: Value = serde_json::from_str(
-        &fs::read_to_string(mcp_tools_path)
-            .unwrap_or_else(|e| panic!("failed to read {}: {e}", mcp_tools_path.display())),
-    )
-    .unwrap_or_else(|e| panic!("failed to parse {}: {e}", mcp_tools_path.display()));
-
+fn schema_names_for_component(tools: &Value) -> (String, String) {
     let tool_map = tools.as_object().unwrap_or_else(|| {
         panic!(
             "expected `{}` to contain a JSON object",
-            mcp_tools_path.display()
+            "cue export McpTools"
         )
     });
 
@@ -215,14 +188,13 @@ fn schema_names_for_component(mcp_tools_path: &Path) -> (String, String) {
     let (tool_name, tool) = entries.next().unwrap_or_else(|| {
         panic!(
             "expected at least one tool definition in {}",
-            mcp_tools_path.display()
+            "cue export McpTools"
         )
     });
 
     assert!(
         entries.next().is_none(),
-        "expected exactly one tool in {} for the single-component template",
-        mcp_tools_path.display()
+        "expected exactly one tool in cue export McpTools for the single-component template"
     );
 
     let input_schema_name = tool
@@ -267,7 +239,6 @@ fn generate_component_wit(
 fn main() {
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("missing manifest dir"));
     let workspace_dir = manifest_dir.join("../..");
-    let mcp_tools_path = workspace_dir.join("_mcpTools.json");
     let input_schema_path = workspace_dir.join("_input.schema.json");
     let output_schema_path = workspace_dir.join("_output.schema.json");
 
@@ -276,8 +247,8 @@ fn main() {
         workspace_dir.join("schema.cue").display()
     );
 
-    export_cue_json(&workspace_dir, "McpTools", "_mcpTools.json");
-    let (input_schema_name, output_schema_name) = schema_names_for_component(&mcp_tools_path);
+    let tools = cue_export_json(&workspace_dir, "McpTools");
+    let (input_schema_name, output_schema_name) = schema_names_for_component(&tools);
 
     run_cue(
         &workspace_dir,
