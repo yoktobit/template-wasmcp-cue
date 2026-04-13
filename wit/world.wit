@@ -1,9 +1,0 @@
-package wasmcp:acmeapp@0.1.0;
-
-/// wasmcp-rust-2 MCP tools capability component
-///
-/// This component exports the tools interface.
-/// The CLI will automatically wrap it with tools-middleware for composition.
-world acmeapp {
-    export wasmcp:mcp-v20251125/tools@0.1.1;
-}

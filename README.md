@@ -1,21 +1,30 @@
-# acme-app
+# acme-app workspace
 
-MCP tools template for wasmcloud
+This project is now split into **two crates** so the business component can be reused outside MCP:
+
+| Crate | Purpose |
+| --- | --- |
+| `crates/component` | Reusable WASI component exporting the app-specific WIT interface |
+| `crates/jsonschema-to-wit` | Shared converter crate that turns JSON Schema into the component WIT contract |
+| `crates/mcp-server` | Thin MCP adapter that exposes the component as a `tools` capability |
 
 ## Build
 
 ```bash
-make setup  # Install wasm32-wasip2 target
-make build  # Output: target/wasm32-wasip2/release/wasmcp_rust_2.wasm
+make setup
+make build
 ```
 
-## Compose
+Built artifacts:
+
+- `target/wasm32-wasip2/release/acme_component.wasm`
+- `target/wasm32-wasip2/release/acme_mcp.wasm`
+
+## Compose the MCP server
 
 ```bash
-wasmcp compose server target/wasm32-wasip2/release/wasmcp_rust_2.wasm -o server.wasm
+wasmcp compose server target/wasm32-wasip2/release/acme_mcp.wasm -o server.wasm
 ```
-
-The CLI automatically detects this is a tools-capability component and wraps it with tools-middleware.
 
 ## Run
 
@@ -24,35 +33,15 @@ The CLI automatically detects this is a tools-capability component and wraps it 
 wasmtime serve -Scli server.wasm
 
 # Stdio
-wasmcp compose server target/wasm32-wasip2/release/wasmcp_rust_2.wasm -t stdio -o server.wasm
+wasmcp compose server target/wasm32-wasip2/release/acme_mcp.wasm -t stdio -o server.wasm
 wasmtime run server.wasm
 ```
 
-## Implementation
+## Layout
 
-This component uses the **capability pattern**, implementing just two methods from the `tools-capability` interface:
+- the root `schema.cue` is the source of truth for MCP tools and schema definitions
+- the root `schema.cue` generates `_all_schemas.schema.json` used for per-tool MCP input/output schemas
+- `crates/jsonschema-to-wit` converts `_all_schemas.schema.json` plus tool bindings into `crates/component/wit/world.wit`
+- `crates/mcp-server` uses the root schemas for MCP tool metadata and dispatches each tool call to the generated component interface function
 
-- `list_tools()` - Returns all tools this component provides
-- `call_tool()` - Executes a tool, returning `Some(result)` if handled, `None` otherwise
-
-See `src/lib.rs` for a calculator implementation demonstrating:
-- Tool definitions with JSON schemas
-- Simple tool execution logic
-- No protocol handling or delegation code
-
-The tools-middleware automatically handles:
-- MCP protocol translation
-- Merging tools from multiple components
-- Request delegation to downstream components
-- Error handling and response formatting
-
-## Adding Tools
-
-To add new tools:
-
-1. Create a tool definition function (like `create_sum_tool()`)
-2. Add it to the list in `list_tools()`
-3. Add a handler in the `call_tool()` match statement
-4. Implement the execution logic
-
-No need to handle merging, delegation, or protocol details - the middleware does that for you!
+This keeps the application contract reusable in non-MCP compositions while still producing a ready-to-run MCP server component.

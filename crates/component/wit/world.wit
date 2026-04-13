@@ -1,0 +1,28 @@
+package acme:app@0.1.0;
+
+/// Generated from JSON Schema. Do not edit manually.
+interface api {
+    record pet {
+        name: string,
+        pet-type: string,
+    }
+
+    record message {
+        nice-message: string,
+        notso-nice-message: string,
+    }
+
+    record personal-data {
+        birthdate: string,
+        forename: string,
+        name: string,
+        wish: string,
+    }
+
+    ask-pet-health: func(input: pet) -> message;
+    greeter-tool: func(input: personal-data) -> message;
+}
+
+world component {
+    export api;
+}
