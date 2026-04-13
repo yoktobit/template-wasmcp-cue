@@ -1,8 +1,11 @@
 use std::env;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use jsonschema_to_wit::{
+    generate_wit_for_tools_from_file, normalize_trivial_aliases, ToolFunction, WitConfig,
+};
 use serde_json::Value;
 
 #[derive(Debug, Clone)]
@@ -234,4 +237,111 @@ pub fn tool_bindings_for_component(tools: &Value) -> Vec<ToolBinding> {
     );
 
     bindings
+}
+
+pub fn find_workspace_dir(manifest_dir: &Path) -> PathBuf {
+    for candidate in manifest_dir.ancestors() {
+        if candidate.join("schema.cue").exists() {
+            return candidate.to_path_buf();
+        }
+    }
+
+    panic!(
+        "failed to find workspace root from {} (expected an ancestor containing schema.cue)",
+        manifest_dir.display()
+    );
+}
+
+pub fn select_tools_for_handler(
+    all_tool_bindings: Vec<ToolBinding>,
+    handler: &ToolHandler,
+) -> Vec<ToolBinding> {
+    all_tool_bindings
+        .into_iter()
+        .filter(|tool| {
+            let tool_handler = parse_tool_handler(&tool.handler);
+            tool_handler.namespace == handler.namespace
+                && tool_handler.package == handler.package
+                && tool_handler.interface == handler.interface
+        })
+        .collect::<Vec<_>>()
+}
+
+fn normalize_schema_aliases(schema_path: &Path) {
+    let mut schema: Value = serde_json::from_str(
+        &fs::read_to_string(schema_path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", schema_path.display())),
+    )
+    .unwrap_or_else(|e| panic!("failed to parse {}: {e}", schema_path.display()));
+
+    normalize_trivial_aliases(&mut schema);
+
+    let normalized = serde_json::to_string_pretty(&schema)
+        .unwrap_or_else(|e| panic!("failed to serialize {}: {e}", schema_path.display()));
+    write_if_changed(schema_path, &(normalized + "\n"));
+}
+
+fn generate_component_wit(
+    manifest_dir: &Path,
+    all_schemas_path: &Path,
+    tool_bindings: &[ToolBinding],
+    handler: &ToolHandler,
+) {
+    let wit_path = manifest_dir.join("wit/world.wit");
+    let version = env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.1.0".to_string());
+    let tool_functions = tool_bindings
+        .iter()
+        .map(|tool| ToolFunction {
+            name: tool.tool_name.clone(),
+            input_schema_name: tool.input_schema_name.clone(),
+            output_schema_name: tool.output_schema_name.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    let wit = generate_wit_for_tools_from_file(
+        all_schemas_path,
+        &tool_functions,
+        &WitConfig {
+            package: handler.package_ref(),
+            version,
+            interface: handler.interface.clone(),
+            world: "component".to_string(),
+            function: "run".to_string(),
+        },
+    )
+    .unwrap_or_else(|e| panic!("failed to generate {}: {e}", wit_path.display()));
+
+    write_if_changed(&wit_path, &wit);
+}
+
+pub fn run_component_codegen(manifest_dir: &Path, handler_env_var: &str, default_handler: &str) {
+    let workspace_dir = find_workspace_dir(manifest_dir);
+    let all_schemas_path = workspace_dir.join("_all_schemas.schema.json");
+
+    println!(
+        "cargo:rerun-if-changed={}",
+        workspace_dir.join("schema.cue").display()
+    );
+    println!("cargo:rerun-if-env-changed={handler_env_var}");
+
+    let tools: Value = cue_export_json(&workspace_dir, "McpTools");
+    let all_tool_bindings = tool_bindings_for_component(&tools);
+    let handler_ref = env::var(handler_env_var).unwrap_or_else(|_| default_handler.to_string());
+    let handler = parse_tool_handler(&handler_ref);
+    let tool_bindings = select_tools_for_handler(all_tool_bindings, &handler);
+
+    assert!(
+        !tool_bindings.is_empty(),
+        "no tools matched {handler_env_var}={handler_ref}; update schema.cue or environment"
+    );
+
+    run_cue(
+        &workspace_dir,
+        "def",
+        "Schemas",
+        "jsonschema",
+        "_all_schemas.schema.json",
+    );
+    normalize_schema_aliases(&all_schemas_path);
+    generate_component_wit(manifest_dir, &all_schemas_path, &tool_bindings, &handler);
 }
