@@ -13,6 +13,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "acme-component-pet"
+version = "0.1.0"
+dependencies = [
+ "jsonschema-to-wit",
+ "serde",
+ "serde_json",
+ "wit-bindgen 0.55.0",
+]
+
+[[package]]
 name = "acme-mcp"
 version = "0.1.0"
 dependencies = [

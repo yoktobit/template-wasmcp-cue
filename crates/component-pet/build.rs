@@ -67,11 +67,12 @@ fn main() {
         "cargo:rerun-if-changed={}",
         workspace_dir.join("schema.cue").display()
     );
-    println!("cargo:rerun-if-env-changed=ACME_COMPONENT_HANDLER");
+    println!("cargo:rerun-if-env-changed=ACME_COMPONENT_PET_HANDLER");
 
     let tools: Value = build_common::cue_export_json(&workspace_dir, "McpTools");
     let all_tool_bindings = build_common::tool_bindings_for_component(&tools);
-    let handler_ref = env::var("ACME_COMPONENT_HANDLER").unwrap_or_else(|_| "acme:greeter/api@0.1.0".to_string());
+    let handler_ref = env::var("ACME_COMPONENT_PET_HANDLER")
+        .unwrap_or_else(|_| "acme:pet/api@0.1.0".to_string());
     let handler = build_common::parse_tool_handler(&handler_ref);
     let tool_bindings = all_tool_bindings
         .into_iter()
@@ -85,7 +86,7 @@ fn main() {
 
     assert!(
         !tool_bindings.is_empty(),
-        "no tools matched ACME_COMPONENT_HANDLER={handler_ref}; update schema.cue or environment"
+        "no tools matched ACME_COMPONENT_PET_HANDLER={handler_ref}; update schema.cue or environment"
     );
 
     build_common::run_cue(

@@ -1,7 +1,8 @@
 package wasmcp:acmeapp@0.1.0;
 
-/// MCP adapter that delegates tool execution to the reusable application component.
+/// MCP adapter that delegates tool execution to reusable application components.
 world acmeapp {
-    import acme:app/api@0.1.0;
+    import acme:greeter/api@0.1.0;
+    import acme:pet/api@0.1.0;
     export wasmcp:mcp-v20251125/tools@0.1.1;
 }

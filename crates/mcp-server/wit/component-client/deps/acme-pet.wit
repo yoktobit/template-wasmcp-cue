@@ -1,12 +1,10 @@
-package acme:greeter@0.1.0;
+package acme:pet@0.1.0;
 
 /// Generated from JSON Schema. Do not edit manually.
 interface api {
-    record personal-data {
-        birthdate: string,
-        forename: string,
+    record pet {
         name: string,
-        wish: string,
+        pet-type: string,
     }
 
     record message {
@@ -14,7 +12,7 @@ interface api {
         notso-nice-message: string,
     }
 
-    greeter-tool: func(input: personal-data) -> message;
+    ask-pet-health: func(input: pet) -> message;
 }
 
 world component {

@@ -1,5 +1,6 @@
 package wasmcp:acmeapp-client@0.1.0;
 
 world component-client {
-    import acme:app/api@0.1.0;
+    import acme:greeter/api@0.1.0;
+    import acme:pet/api@0.1.0;
 }

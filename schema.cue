@@ -5,6 +5,7 @@ import "time"
 #Tool: {
 	name:            string
 	description:     string
+	handler:         string | *"acme:greeter/api@0.1.0"
 	inputSchema:     #Schema
 	inputSchemaName: inputSchema._$name
 	outputSchema:   #Schema
@@ -21,6 +22,7 @@ McpTools: {
 		"\(key)": {
 			name:             val.name
 			description:      val.description
+			handler:          val.handler
 			inputSchemaName:  val.inputSchemaName
 			outputSchemaName: val.outputSchemaName
 		}
@@ -29,7 +31,7 @@ McpTools: {
 
 _RustToolLists: {
 	specs: [for _, tool in McpTools {
-		"ToolSpec { name: \"\(tool.name)\", title: \"\(tool.name)\", description: \"\(tool.description)\", input_schema_name: \"\(tool.inputSchemaName)\", output_schema_name: \"\(tool.outputSchemaName)\" }"
+		"ToolSpec { name: \"\(tool.name)\", title: \"\(tool.name)\", description: \"\(tool.description)\", handler: \"\(tool.handler)\", input_schema_name: \"\(tool.inputSchemaName)\", output_schema_name: \"\(tool.outputSchemaName)\" }"
 	}]
 }
 
@@ -41,6 +43,7 @@ pub struct ToolSpec {
     pub name: &'static str,
     pub title: &'static str,
     pub description: &'static str,
+	pub handler: &'static str,
     pub input_schema_name: &'static str,
     pub output_schema_name: &'static str,
 }
@@ -62,11 +65,13 @@ pub const TOOL_SPECS: &[ToolSpec] = &[
 Tools: #Tools & {
 	"greeter-tool": {
 		description:  "greeter-tool"
+		handler:     "acme:greeter/api@0.1.0"
 		inputSchema:  Schemas.PersonalData
 		outputSchema: Schemas.Message
 	},
 	"ask-pet-health": {
 		description: "asks, if your pet is ok"
+		handler:    "acme:pet/api@0.1.0"
 		inputSchema: Schemas.Pet
 		outputSchema: Schemas.Message
 	}

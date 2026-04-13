@@ -8,8 +8,66 @@ use serde_json::Value;
 #[derive(Debug, Clone)]
 pub struct ToolBinding {
     pub tool_name: String,
+    pub handler: String,
     pub input_schema_name: String,
     pub output_schema_name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct ToolHandler {
+    pub namespace: String,
+    pub package: String,
+    pub interface: String,
+    pub version: Option<String>,
+}
+
+impl ToolHandler {
+    pub fn package_ref(&self) -> String {
+        format!("{}:{}", self.namespace, self.package)
+    }
+
+    pub fn import_ref(&self, default_version: &str) -> String {
+        let version = self
+            .version
+            .as_deref()
+            .unwrap_or(default_version);
+        format!("{}/{}@{}", self.package_ref(), self.interface, version)
+    }
+
+    pub fn rust_module_path(&self) -> String {
+        format!(
+            "{}::{}::{}",
+            jsonschema_to_wit::to_snake_case(&self.namespace),
+            jsonschema_to_wit::to_snake_case(&self.package),
+            jsonschema_to_wit::to_snake_case(&self.interface)
+        )
+    }
+}
+
+pub fn parse_tool_handler(handler: &str) -> ToolHandler {
+    let (package_ref, interface_ref) = handler
+        .split_once('/')
+        .unwrap_or_else(|| panic!("invalid handler `{handler}`: expected `namespace:package/interface`"));
+    let (namespace, package) = package_ref
+        .split_once(':')
+        .unwrap_or_else(|| panic!("invalid handler `{handler}`: expected `namespace:package/interface`"));
+    let (interface, version) = if let Some((interface, version)) = interface_ref.split_once('@') {
+        (interface, Some(version.to_string()))
+    } else {
+        (interface_ref, None)
+    };
+
+    assert!(
+        !namespace.is_empty() && !package.is_empty() && !interface.is_empty(),
+        "invalid handler `{handler}`: expected non-empty `namespace`, `package`, and `interface`"
+    );
+
+    ToolHandler {
+        namespace: namespace.to_string(),
+        package: package.to_string(),
+        interface: interface.to_string(),
+        version,
+    }
 }
 
 pub fn write_if_changed(destination: &Path, contents: &str) {
@@ -147,6 +205,12 @@ pub fn tool_bindings_for_component(tools: &Value) -> Vec<ToolBinding> {
 
     let mut bindings = Vec::with_capacity(tool_map.len());
     for (tool_name, tool) in tool_map {
+        let handler = tool
+            .get("handler")
+            .and_then(Value::as_str)
+            .unwrap_or("acme:greeter/api@0.1.0");
+        parse_tool_handler(handler);
+
         let input_schema_name = tool
             .get("inputSchemaName")
             .and_then(Value::as_str)
@@ -158,6 +222,7 @@ pub fn tool_bindings_for_component(tools: &Value) -> Vec<ToolBinding> {
 
         bindings.push(ToolBinding {
             tool_name: tool_name.to_string(),
+            handler: handler.to_string(),
             input_schema_name: input_schema_name.to_string(),
             output_schema_name: output_schema_name.to_string(),
         });

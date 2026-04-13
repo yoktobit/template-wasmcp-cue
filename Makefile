@@ -1,4 +1,4 @@
-.PHONY: all setup build build-component build-mcp clean
+.PHONY: all setup build build-component build-component-pet build-mcp clean
 
 # Default target
 all: build
@@ -14,6 +14,10 @@ build:
 # Build the reusable application component only
 build-component:
 	@cargo build -p acme-component --target wasm32-wasip2 --release
+
+# Build the pet-health component only
+build-component-pet:
+	@cargo build -p acme-component-pet --target wasm32-wasip2 --release
 
 # Build the MCP adapter component only
 build-mcp:

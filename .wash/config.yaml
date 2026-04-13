@@ -6,3 +6,5 @@ dev:
   components:
     - name: acme-component
       file: target/wasm32-wasip2/release/acme_component.wasm
+    - name: acme-component-pet
+      file: target/wasm32-wasip2/release/acme_component_pet.wasm

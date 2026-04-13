@@ -7,8 +7,8 @@ mod bindings {
     });
 }
 
-use bindings::exports::acme::app::api::Guest;
-use crate::bindings::exports::acme::app::api::{Message, PersonalData, Pet};
+use bindings::exports::acme::greeter::api::Guest;
+use crate::bindings::exports::acme::greeter::api::{Message, PersonalData};
 
 struct Component;
 
@@ -22,17 +22,6 @@ impl Guest for Component {
             notso_nice_message: format!(
                 "If '{}' takes longer than expected, you'll still have to do some work yourself, {}.",
                 input.wish, input.name
-            ),
-        }
-    }
-
-    fn ask_pet_health(input: Pet) -> Message {
-        Message {
-            nice_message: format!(
-                "How is your {}, {}?", input.pet_type, input.name
-            ),
-            notso_nice_message: format!(
-                "Is your {}, {}, dead already?", input.pet_type, input.name
             ),
         }
     }

@@ -22,7 +22,6 @@ mod tool_constants {
 use bindings::exports::wasmcp::mcp_v20251125::tools::Guest;
 use bindings::wasmcp::mcp_v20251125::mcp::*;
 use bindings::wasmcp::mcp_v20251125::server_handler::MessageContext;
-use component_api_bindings::acme::app::api as component_api;
 use jsonschema_to_wit::{normalize_json_keys_to_snake, remap_json_keys_to_schema};
 use serde::de::DeserializeOwned;
 use std::sync::OnceLock;
@@ -34,7 +33,7 @@ const INPUT_SCHEMA: &str = include_str!(concat!(
 
 mod tool_dispatch {
     use super::bindings::wasmcp::mcp_v20251125::mcp::CallToolResult;
-    use super::{component_api, parse_component_input, serialize_output_for_schema, success_result};
+    use super::{component_api_bindings, parse_component_input, serialize_output_for_schema, success_result};
 
     include!(concat!(env!("OUT_DIR"), "/tool_dispatch.rs"));
 }

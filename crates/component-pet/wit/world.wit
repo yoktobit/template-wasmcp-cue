@@ -1,4 +1,4 @@
-package acme:app@0.1.0;
+package acme:pet@0.1.0;
 
 /// Generated from JSON Schema. Do not edit manually.
 interface api {
@@ -12,15 +12,7 @@ interface api {
         notso-nice-message: string,
     }
 
-    record personal-data {
-        birthdate: string,
-        forename: string,
-        name: string,
-        wish: string,
-    }
-
     ask-pet-health: func(input: pet) -> message;
-    greeter-tool: func(input: personal-data) -> message;
 }
 
 world component {
