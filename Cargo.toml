@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = ["crates/c2s",
     "crates/component",
     "crates/component-pet",
     "crates/jsonschema-to-wit",

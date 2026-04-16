@@ -1,0 +1,10 @@
+[package]
+name = "c2s"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+component2json = { path = "../../../../wassette/wassette/crates/component2json"}
+wasmtime = "36"
+serde_json = { workspace = true }
+serde = { workspace = true }
