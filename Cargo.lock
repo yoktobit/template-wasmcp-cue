@@ -6,7 +6,6 @@ version = 4
 name = "acme-component"
 version = "0.1.0"
 dependencies = [
- "jsonschema-to-wit",
  "serde",
  "serde_json",
  "wit-bindgen 0.55.0",
