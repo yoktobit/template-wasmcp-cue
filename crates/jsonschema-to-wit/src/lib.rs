@@ -124,29 +124,32 @@ pub fn generate_wit_for_tools(
     let mut order = Vec::new();
     let interface_name = escape_wit_ident(&to_kebab_case(&config.interface));
     let world_name = escape_wit_ident(&to_kebab_case(&config.world));
-    let schemas = all_schema_properties(all_schemas)?;
-    let empty_defs = Map::new();
-    let defs = all_schemas
-        .get("$defs")
-        .and_then(Value::as_object)
-        .unwrap_or(&empty_defs);
+    let schemas = collect_named_schemas(all_schemas);
+
+    if schemas.is_empty() {
+        return Err(Error::new(
+            "expected all-schemas JSON Schema document to expose named schemas in `properties`, `$defs`, or `definitions`",
+        ));
+    }
 
     let mut function_lines = Vec::with_capacity(tool_functions.len());
     for tool in tool_functions {
         let function_name = escape_wit_ident(&to_kebab_case(&tool.name));
-        let input_schema = find_def(schemas, &tool.input_schema_name)?;
-        let output_schema = find_def(schemas, &tool.output_schema_name)?;
+        let input_schema = find_def(&schemas, &tool.input_schema_name)?;
+        let output_schema = find_def(&schemas, &tool.output_schema_name)?;
         let input_type = schema_to_wit_type(
             &tool.input_schema_name,
             input_schema,
-            defs,
+            all_schemas,
+            &schemas,
             &mut emitted,
             &mut order,
         )?;
         let output_type = schema_to_wit_type(
             &tool.output_schema_name,
             output_schema,
-            defs,
+            all_schemas,
+            &schemas,
             &mut emitted,
             &mut order,
         )?;
@@ -307,13 +310,106 @@ fn read_schema(path: &Path) -> Result<Value> {
 }
 
 fn decode_ref_name(reference: &str) -> String {
-    reference
-        .rsplit('/')
-        .next()
-        .unwrap_or(reference)
-        .replace("%23", "")
-        .trim_start_matches('#')
-        .to_string()
+    let tail = reference.rsplit('/').next().unwrap_or(reference);
+    percent_decode(tail).trim_start_matches('#').to_string()
+}
+
+fn decode_pointer_token(token: &str) -> String {
+    percent_decode(token).replace("~1", "/").replace("~0", "~")
+}
+
+fn percent_decode(input: &str) -> String {
+    fn hex(byte: u8) -> Option<u8> {
+        match byte {
+            b'0'..=b'9' => Some(byte - b'0'),
+            b'a'..=b'f' => Some(byte - b'a' + 10),
+            b'A'..=b'F' => Some(byte - b'A' + 10),
+            _ => None,
+        }
+    }
+
+    let bytes = input.as_bytes();
+    let mut output = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+
+    while index < bytes.len() {
+        if bytes[index] == b'%' && index + 2 < bytes.len() {
+            if let (Some(hi), Some(lo)) = (hex(bytes[index + 1]), hex(bytes[index + 2])) {
+                output.push((hi << 4) | lo);
+                index += 3;
+                continue;
+            }
+        }
+
+        output.push(bytes[index]);
+        index += 1;
+    }
+
+    String::from_utf8_lossy(&output).to_string()
+}
+
+fn resolve_json_pointer<'a>(schema: &'a Value, pointer: &str) -> Option<&'a Value> {
+    let mut current = schema;
+
+    for token in pointer.split('/').skip(1) {
+        let token = decode_pointer_token(token);
+        current = match current {
+            Value::Object(map) => map.get(&token)?,
+            Value::Array(items) => {
+                let index = token.parse::<usize>().ok()?;
+                items.get(index)?
+            }
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => return None,
+        };
+    }
+
+    Some(current)
+}
+
+fn resolve_reference<'a>(
+    reference: &str,
+    root_schema: &'a Value,
+    defs: &'a Map<String, Value>,
+) -> Result<&'a Value> {
+    if let Some(pointer) = reference.strip_prefix('#') {
+        if pointer.is_empty() {
+            return Ok(root_schema);
+        }
+
+        if pointer.starts_with('/') {
+            if let Some(value) = resolve_json_pointer(root_schema, pointer) {
+                return Ok(value);
+            }
+        }
+    }
+
+    let def_name = decode_ref_name(reference);
+    find_def(defs, &def_name)
+}
+
+fn insert_named_schemas(target: &mut Map<String, Value>, source: Option<&Map<String, Value>>) {
+    let Some(source) = source else {
+        return;
+    };
+
+    for (key, value) in source {
+        let canonical = decode_ref_name(key);
+        target.entry(canonical).or_insert_with(|| value.clone());
+    }
+}
+
+fn collect_named_schemas(schema: &Value) -> Map<String, Value> {
+    let mut out = Map::new();
+    insert_named_schemas(
+        &mut out,
+        schema.get("properties").and_then(Value::as_object),
+    );
+    insert_named_schemas(&mut out, schema.get("$defs").and_then(Value::as_object));
+    insert_named_schemas(
+        &mut out,
+        schema.get("definitions").and_then(Value::as_object),
+    );
+    out
 }
 
 fn to_separated_case(name: &str, separator: char) -> String {
@@ -390,17 +486,6 @@ fn escape_wit_ident(name: &str) -> String {
     }
 }
 
-fn all_schema_properties(all_schemas: &Value) -> Result<&Map<String, Value>> {
-    all_schemas
-        .get("properties")
-        .and_then(Value::as_object)
-        .ok_or_else(|| {
-            Error::new(
-                "expected all-schemas JSON Schema document to contain an object `properties` field",
-            )
-        })
-}
-
 fn required_properties(schema: &Value) -> BTreeSet<String> {
     schema
         .get("required")
@@ -428,6 +513,7 @@ fn find_def<'a>(defs: &'a Map<String, Value>, def_name: &str) -> Result<&'a Valu
 fn schema_to_wit_type(
     logical_name: &str,
     schema: &Value,
+    root_schema: &Value,
     defs: &Map<String, Value>,
     emitted: &mut BTreeMap<String, String>,
     order: &mut Vec<String>,
@@ -435,7 +521,7 @@ fn schema_to_wit_type(
     if schema.get("properties").is_some()
         || schema.get("type").and_then(Value::as_str) == Some("object")
     {
-        return generate_named_record(logical_name, schema, defs, emitted, order);
+        return generate_named_record(logical_name, schema, root_schema, defs, emitted, order);
     }
 
     if schema.get("enum").is_some() {
@@ -444,14 +530,19 @@ fn schema_to_wit_type(
 
     if let Some(one_of) = schema.get("oneOf").and_then(Value::as_array) {
         if let Some(first) = one_of.first() {
-            return schema_to_wit_type(logical_name, first, defs, emitted, order);
+            return schema_to_wit_type(logical_name, first, root_schema, defs, emitted, order);
         }
     }
 
     if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
         let def_name = decode_ref_name(reference);
-        let def_schema = find_def(defs, &def_name)?;
-        return schema_to_wit_type(&def_name, def_schema, defs, emitted, order);
+        let def_schema = resolve_reference(reference, root_schema, defs)?;
+        let next_name = if def_name.is_empty() {
+            logical_name.to_string()
+        } else {
+            def_name
+        };
+        return schema_to_wit_type(&next_name, def_schema, root_schema, defs, emitted, order);
     }
 
     match schema.get("type").and_then(Value::as_str) {
@@ -464,6 +555,7 @@ fn schema_to_wit_type(
                 Some(items) => schema_to_wit_type(
                     &format!("{logical_name}-item"),
                     items,
+                    root_schema,
                     defs,
                     emitted,
                     order,
@@ -482,6 +574,7 @@ fn schema_to_wit_type(
 fn generate_named_record(
     logical_name: &str,
     schema: &Value,
+    root_schema: &Value,
     defs: &Map<String, Value>,
     emitted: &mut BTreeMap<String, String>,
     order: &mut Vec<String>,
@@ -505,6 +598,7 @@ fn generate_named_record(
         let mut field_type = schema_to_wit_type(
             &format!("{logical_name}-{property_name}"),
             property_schema,
+            root_schema,
             defs,
             emitted,
             order,
@@ -535,11 +629,7 @@ fn resolve_root_type(
     emitted: &mut BTreeMap<String, String>,
     order: &mut Vec<String>,
 ) -> Result<String> {
-    let empty_defs = Map::new();
-    let defs = schema
-        .get("$defs")
-        .and_then(Value::as_object)
-        .unwrap_or(&empty_defs);
+    let defs = collect_named_schemas(schema);
 
     let has_inline_shape = schema.get("properties").is_some()
         || schema.get("enum").is_some()
@@ -558,18 +648,13 @@ fn resolve_root_type(
 
     if let Some(reference) = schema.get("$ref").and_then(Value::as_str) {
         if has_inline_shape {
-            schema_to_wit_type(&logical_name, schema, defs, emitted, order)
+            schema_to_wit_type(&logical_name, schema, schema, &defs, emitted, order)
         } else {
-            if defs.is_empty() {
-                return Err(Error::new("schema uses `$ref` but does not define `$defs`"));
-            }
-
-            let def_name = decode_ref_name(reference);
-            let root_schema = find_def(defs, &def_name)?;
-            schema_to_wit_type(&logical_name, root_schema, defs, emitted, order)
+            let root_schema = resolve_reference(reference, schema, &defs)?;
+            schema_to_wit_type(&logical_name, root_schema, schema, &defs, emitted, order)
         }
     } else {
-        schema_to_wit_type(&logical_name, schema, defs, emitted, order)
+        schema_to_wit_type(&logical_name, schema, schema, &defs, emitted, order)
     }
 }
 
@@ -787,6 +872,46 @@ mod tests {
         assert!(wit.contains("record search-output"));
         assert!(wit.contains("greeter-tool: func(input: personal-data) -> message;"));
         assert!(wit.contains("search-tool: func(input: search-input) -> search-output;"));
+    }
+
+    #[test]
+    fn generates_multiple_functions_when_named_schemas_are_refs_into_defs() {
+        let all_schemas = json!({
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$defs": {
+                "#PersonalData": {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string" }
+                    },
+                    "required": ["name"]
+                },
+                "#Message": {
+                    "type": "object",
+                    "properties": {
+                        "text": { "type": "string" }
+                    },
+                    "required": ["text"]
+                }
+            },
+            "properties": {
+                "PersonalData": { "$ref": "#/$defs/%23PersonalData" },
+                "Message": { "$ref": "#/$defs/%23Message" }
+            }
+        });
+
+        let tools = vec![ToolFunction {
+            name: "greeter-tool".to_string(),
+            input_schema_name: "PersonalData".to_string(),
+            output_schema_name: "Message".to_string(),
+        }];
+
+        let wit = generate_wit_for_tools(&all_schemas, &tools, &WitConfig::default())
+            .expect("WIT should be generated");
+
+        assert!(wit.contains("record personal-data"));
+        assert!(wit.contains("record message"));
+        assert!(wit.contains("greeter-tool: func(input: personal-data) -> message;"));
     }
 
     #[test]

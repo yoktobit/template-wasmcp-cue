@@ -51,13 +51,7 @@ pub fn copy_if_changed(source: &str, destination: &str) {
     write_if_changed(destination_path, &contents);
 }
 
-pub fn run_cue(
-    workspace_dir: &Path,
-    command: &str,
-    expr: &str,
-    format: &str,
-    output_file: &str,
-) {
+pub fn run_cue(workspace_dir: &Path, command: &str, expr: &str, format: &str, output_file: &str) {
     let temp_output_file = format!(
         ".{}.{}",
         env::var("CARGO_PKG_NAME").unwrap_or_else(|_| "schema".to_string()),
@@ -97,7 +91,16 @@ pub fn run_cue(
 pub fn cue_export_json(workspace_dir: &Path, expr: &str) -> Value {
     let output = Command::new("mise")
         .current_dir(workspace_dir)
-        .args(["x", "--", "cue", "export", "--force", "schema.cue", "-e", expr])
+        .args([
+            "x",
+            "--",
+            "cue",
+            "export",
+            "--force",
+            "schema.cue",
+            "-e",
+            expr,
+        ])
         .output()
         .unwrap_or_else(|e| panic!("failed to execute `cue export`: {e}"));
 

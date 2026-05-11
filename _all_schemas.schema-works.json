@@ -1,0 +1,69 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "#Schema": {
+            "const": {}
+        },
+        "#Schemas": {
+            "additionalProperties": {
+                "$ref": "#/$defs/%23Schema",
+                "additionalProperties": true,
+                "type": "object"
+            },
+            "type": "object"
+        }
+    },
+    "$ref": "#/$defs/%23Schemas",
+    "additionalProperties": {
+        "$ref": "#/$defs/%23Schema",
+        "additionalProperties": true,
+        "type": "object"
+    },
+    "properties": {
+        "Message": {
+            "properties": {
+                "NiceMessage": {
+                    "type": "string"
+                },
+                "NotsoNiceMessage": {
+                    "type": "string"
+                }
+            },
+            "required": ["NiceMessage", "NotsoNiceMessage"],
+            "type": "object"
+        },
+        "PersonalData": {
+            "properties": {
+                "birthdate": {
+                    "type": "string"
+                },
+                "forename": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "wish": {
+                    "type": "string"
+                }
+            },
+            "required": ["birthdate", "forename", "name", "wish"],
+            "type": "object"
+        },
+        "Pet": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "petType": {
+                    "enum": ["dog", "cat"],
+                    "type": "string"
+                }
+            },
+            "required": ["name", "petType"],
+            "type": "object"
+        }
+    },
+    "required": ["Message", "PersonalData", "Pet"],
+    "type": "object"
+}

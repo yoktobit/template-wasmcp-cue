@@ -8,9 +8,8 @@ use jsonschema_to_wit::{to_pascal_case, to_snake_case};
 mod build_common;
 
 fn generate_tool_dispatch(destination: &Path, tools: &[build_common::ToolBinding]) {
-    let mut source = String::from(
-        "// Generated from `schema.cue` by `build.rs`. Do not edit manually.\n",
-    );
+    let mut source =
+        String::from("// Generated from `schema.cue` by `build.rs`. Do not edit manually.\n");
     source.push_str(
         "pub fn call_component_tool(\n    tool_name: &str,\n    args: &str,\n) -> Result<CallToolResult, String> {\n    match tool_name {\n",
     );
@@ -32,7 +31,8 @@ fn generate_tool_dispatch(destination: &Path, tools: &[build_common::ToolBinding
 }
 
 fn main() {
-    println!("cargo:rerun-if-changed=../../schema.cue");
+    println!("cargo:rerun-if-changed=../../*.cue");
+    println!("cargo:rerun-if-changed=../../*.json");
     println!("cargo:rerun-if-changed=../component/wit/world.wit");
 
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").expect("missing CARGO_MANIFEST_DIR");

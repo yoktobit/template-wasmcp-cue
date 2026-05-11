@@ -1,13 +1,14 @@
 import "strings"
+
 import "time"
 //import "list"
 
 #Tool: {
-	name:            string
-	description:     string
-	inputSchema:     #Schema
-	inputSchemaName: inputSchema._$name
-	outputSchema:   #Schema
+	name:             string
+	description:      string
+	inputSchema:      #Schema
+	inputSchemaName:  inputSchema._$name
+	outputSchema:     #Schema
 	outputSchemaName: outputSchema._$name
 }
 
@@ -64,25 +65,27 @@ Tools: #Tools & {
 		description:  "greeter-tool"
 		inputSchema:  Schemas.PersonalData
 		outputSchema: Schemas.Message
-	},
+	}
 	"ask-pet-health": {
-		description: "asks, if your pet is ok"
-		inputSchema: Schemas.Pet
+		description:  "asks, if your pet is ok"
+		inputSchema:  Schemas.Pet
 		outputSchema: Schemas.Message
 	}
 }
 
+#PersonalData: {
+	// Der Name
+	name: string
+	// Der Vorname oder die Vornamen
+	forename: string
+	// Das Geburtsdatum
+	birthdate: time.Time
+	wish:      string
+}
+
 Schemas: #Schemas & {
 	// Die Persönlichen Daten des Antragstellers
-	PersonalData: {
-		// Der Name
-		name: string
-		// Der Vorname oder die Vornamen
-		forename: string
-		// Das Geburtsdatum
-		birthdate: time.Time
-		wish:      string
-	}
+	PersonalData: #PersonalData
 	// Die Nachricht, die an den Nutzer ausgegeben wird
 	Message: {
 		// The Greeting
@@ -92,6 +95,6 @@ Schemas: #Schemas & {
 	// Pet
 	Pet: {
 		petType: string & ("dog" | "cat")
-		name: string
+		name:    string
 	}
 }

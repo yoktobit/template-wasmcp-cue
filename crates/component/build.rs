@@ -64,7 +64,7 @@ fn main() {
 
     println!(
         "cargo:rerun-if-changed={}",
-        workspace_dir.join("schema.cue").display()
+        workspace_dir.join("*.cue").display()
     );
 
     let tools: Value = build_common::cue_export_json(&workspace_dir, "McpTools");
