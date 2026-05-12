@@ -1,0 +1,6 @@
+[tools]
+"cue" = "latest"
+"rust" = {
+  version = "1.93.1",
+  targets = "wasm32-wasip2",
+}

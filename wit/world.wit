@@ -1,0 +1,9 @@
+package wasmcp:acme-app-mcp@0.1.0;
+
+/// template-wasmcp-cue-new MCP tools capability component
+///
+/// This component exports the tools interface.
+/// The CLI will automatically wrap it with tools-middleware for composition.
+world template-wasmcp-cue-new {
+    export wasmcp:mcp-v20251125/tools@0.1.1;
+}
