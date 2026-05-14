@@ -1,0 +1,58 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$defs": {
+        "#Schema": {
+            "const": {}
+        },
+        "#Schemas": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "object",
+                "additionalProperties": true,
+                "$ref": "#/$defs/%23Schema"
+            }
+        }
+    },
+    "type": "object",
+    "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "$ref": "#/$defs/%23Schema"
+    },
+    "properties": {
+        "TestInput": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "pet": {
+                    "enum": [
+                        "dog",
+                        "cat"
+                    ]
+                }
+            },
+            "required": [
+                "name",
+                "pet"
+            ]
+        },
+        "TestOutput": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "message"
+            ]
+        }
+    },
+    "$ref": "#/$defs/%23Schemas",
+    "required": [
+        "TestInput",
+        "TestOutput"
+    ]
+}

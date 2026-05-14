@@ -7,13 +7,18 @@ import "tool/file"
 toolNames: [
 	for k, v in Tools {
 		v.name
-	}
+	},
 ]
+lastTool: toolNames[len(toolNames)-1]
 
-outputfilename: "src/tools.rs"
+outputfilename:          "src/tools.rs"
+outputToolCallsFilename: "src/tool_calls.rs"
 
 command: {
 	extractTools: {
+		"generateJsonSchema": exec.Run & {
+			cmd: ["cue", "def", "-o", "jsonschema:_allSchemas.schema.json", ".", "-e", "Schemas"]
+		}
 		"aFirstStep": file.Create & {
 			filename: outputfilename
 			contents: #RustToolHeader
@@ -34,8 +39,39 @@ command: {
 		"zeLastStep": file.Append & {
 			filename: outputfilename
 			contents: #RustToolFooter
-			lastTool: toolNames[len(toolNames)-1]
-			$after: extractTools["append_\(lastTool)"]
+			$after:   extractTools["append_\(lastTool)"]
+		}
+		outputToolCallsHeader: file.Create & {
+			filename: outputToolCallsFilename
+			contents: #RustToolCallHeader
+		}
+		for k, v in Tools {
+			"outputToolCallTraitItem_\(v.name)": file.Append & {
+				filename: outputToolCallsFilename
+				contents: (#RustToolCallTraitTemplate & {
+					inputTool: v
+				}).outputRust
+				$after: outputToolCallsHeader
+			}
+		}
+		outputToolCallTraitInlay: file.Append & {
+			filename: outputToolCallsFilename
+			contents: #RustToolCallTraitInlay
+			$after:   extractTools["outputToolCallTraitItem_\(lastTool)"]
+		}
+		for k, v in Tools {
+			"outputToolCallItem_\(v.name)": file.Append & {
+				filename: outputToolCallsFilename
+				contents: (#RustToolCallTemplate & {
+					inputTool: v
+				}).outputRust
+				$after: outputToolCallTraitInlay
+			}
+		}
+		outputToolCallFooter: file.Append & {
+			filename: outputToolCallsFilename
+			contents: #RustToolCallFooter
+			$after:   extractTools["outputToolCallItem_\(lastTool)"]
 		}
 	}
 }
