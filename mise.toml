@@ -5,6 +5,7 @@
   targets = "wasm32-wasip2",
 }
 watchexec = "latest"
+"github:wasmCloud/wasmCloud" = "2.1.0"
 
 [tasks."liscaf-merge"]
 run = "cue def -o jsonschema:_allSchemas.schema.json . -e Schemas -s --force"
