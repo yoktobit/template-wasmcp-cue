@@ -1,0 +1,11 @@
+build:
+  command: make && wasmcp compose server --runtime wasmcloud ./target/wasm32-wasip2/release/acme-app-mcp.wasm --force -o ./target/acme-app_mcp_server.wasm
+  component_path: target/acme-app_mcp_server.wasm
+
+# Soll die Implementierung ausgelagert werden auf eine eigene WebAssembly?
+# Dann hier laden:
+#
+# dev:
+#   components:
+#     - name: controller-component
+#       file: target/wasm32-wasip2/release/controller_component.wasm

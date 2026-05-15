@@ -4,3 +4,8 @@
   version = "1.93.1",
   targets = "wasm32-wasip2",
 }
+watchexec = "latest"
+
+[tasks."liscaf-merge"]
+run = "cue def -o jsonschema:_allSchemas.schema.json . -e Schemas -s --force"
+sources = ['*.cue']

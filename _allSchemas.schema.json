@@ -1,27 +1,9 @@
 {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$defs": {
-        "#Schema": {
-            "const": {}
-        },
-        "#Schemas": {
+        "#TestInput": {
             "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "additionalProperties": true,
-                "$ref": "#/$defs/%23Schema"
-            }
-        }
-    },
-    "type": "object",
-    "additionalProperties": {
-        "type": "object",
-        "additionalProperties": true,
-        "$ref": "#/$defs/%23Schema"
-    },
-    "properties": {
-        "TestInput": {
-            "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "name": {
                     "type": "string"
@@ -38,8 +20,9 @@
                 "pet"
             ]
         },
-        "TestOutput": {
+        "#TestOutput": {
             "type": "object",
+            "additionalProperties": false,
             "properties": {
                 "message": {
                     "type": "string"
@@ -50,7 +33,15 @@
             ]
         }
     },
-    "$ref": "#/$defs/%23Schemas",
+    "type": "object",
+    "properties": {
+        "TestInput": {
+            "$ref": "#/$defs/%23TestInput"
+        },
+        "TestOutput": {
+            "$ref": "#/$defs/%23TestOutput"
+        }
+    },
     "required": [
         "TestInput",
         "TestOutput"

@@ -10,11 +10,7 @@ mod bindings {
 }
 
 mod json_bindings {
-    typify::import_types!(
-        schema = "_allSchemas.schema.json",
-        //derives = [serde::Serialize, serde::Deserialize],
-        //struct_builder = true
-    );
+    typify::import_types!(schema = "_allSchemas.schema.json", struct_builder = true);
 }
 
 use bindings::exports::wasmcp::mcp_v20251125::tools::Guest;
