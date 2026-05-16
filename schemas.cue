@@ -92,27 +92,3 @@ SchemaNames: {for k, _ in Schemas {"\(k)": "\(k)"}}
 
 //Schemas: #Schemas
 Tools: #Tools
-
-#TestInput: {
-	// The name of the person to greet
-	name: string
-	// The type of pet of the person
-	pet: "dog" | "cat"
-}
-
-#TestOutput: {
-	message: string
-}
-
-Schemas: {
-	TestInput:  #TestInput
-	TestOutput: #TestOutput
-}
-
-Tools: #Tools & {
-	"greeter": {
-		description:      "Greets somebody"
-		inputSchemaName:  SchemaNames.TestInput
-		outputSchemaName: SchemaNames.TestOutput
-	}
-}

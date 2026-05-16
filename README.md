@@ -5,54 +5,24 @@ MCP tools capability component in Rust.
 ## Build
 
 ```bash
-make setup  # Install wasm32-wasip2 target
-make build  # Output: target/wasm32-wasip2/release/template_wasmcp_cue_new.wasm
+mise run liscaf-merge  # converts cue to jsonschema and generates rust files
+wash build  # runs wasmCloud build
 ```
-
-## Compose
-
-```bash
-wasmcp compose server target/wasm32-wasip2/release/template_wasmcp_cue_new.wasm -o server.wasm
-```
-
-The CLI automatically detects this is a tools-capability component and wraps it with tools-middleware.
 
 ## Run
 
 ```bash
 # HTTP
-wasmtime serve -Scli server.wasm
-
-# Stdio
-wasmcp compose server target/wasm32-wasip2/release/template_wasmcp_cue_new.wasm -t stdio -o server.wasm
-wasmtime run server.wasm
+wash dev
 ```
-
-## Implementation
-
-This component uses the **capability pattern**, implementing just two methods from the `tools-capability` interface:
-
-- `list_tools()` - Returns all tools this component provides
-- `call_tool()` - Executes a tool, returning `Some(result)` if handled, `None` otherwise
-
-See `src/lib.rs` for a calculator implementation demonstrating:
-- Tool definitions with JSON schemas
-- Simple tool execution logic
-- No protocol handling or delegation code
-
-The tools-middleware automatically handles:
-- MCP protocol translation
-- Merging tools from multiple components
-- Request delegation to downstream components
-- Error handling and response formatting
 
 ## Adding Tools
 
 To add new tools:
 
-1. Create a tool definition function (like `create_sum_tool()`)
-2. Add it to the list in `list_tools()`
-3. Add a handler in the `call_tool()` match statement
-4. Implement the execution logic
-
-No need to handle merging, delegation, or protocol details - the middleware does that for you!
+1. create input/output schema in config.cue
+2. create tool in config.cue
+3. link input/output schema in tool def
+4. run mise liscaf-merge
+5. implement the now missing functions in implementation.rs
+6. new types are in the module json_bindings
