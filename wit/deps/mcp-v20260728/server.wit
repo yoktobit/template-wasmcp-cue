@@ -1,4 +1,4 @@
-use wasi:io/streams@0.2.8;
+use wasi:io/streams@0.2.9;
 
 /// Server-side MCP message handler.
 ///
@@ -13,7 +13,9 @@ interface server-handler {
         client-message,
         server-result,
         identity,
-        session,
+        client-capabilities,
+        implementation,
+        log-level,
     };
     use server-io.{
         message-frame,
@@ -29,8 +31,12 @@ interface server-handler {
         client-stream: option<borrow<output-stream>>,
         /// MCP protocol version
         protocol-version: string,
-        /// Client session details, if available
-        session: option<session>,
+        /// Client capabilities from the request `_meta`
+        client-capabilities: option<client-capabilities>,
+        /// Client identity from the request `_meta`
+        client-info: option<implementation>,
+        /// Requested log level from the request `_meta`; none means do not emit log notifications
+        log-level: option<log-level>,
         /// User identity details, if available
         identity: option<identity>,
         /// Message framing for this transport
@@ -53,7 +59,7 @@ interface server-handler {
 /// This interface enables servers to parse and send MCP messages over streams.
 @since(version = 0.1.0)
 interface server-io {
-    use wasi:io/streams@0.2.8.{
+    use wasi:io/streams@0.2.9.{
         input-stream,
         output-stream,
         stream-error,
@@ -61,7 +67,30 @@ interface server-io {
     use mcp.{
         client-message,
         server-message,
+        client-capabilities,
+        implementation,
+        log-level,
     };
+
+    /// Per-request metadata read from the `_meta` of a client request
+    @since(version = 0.1.0)
+    record request-meta {
+        /// `io.modelcontextprotocol/protocolVersion`
+        protocol-version: option<string>,
+        /// `io.modelcontextprotocol/clientCapabilities`
+        client-capabilities: option<client-capabilities>,
+        /// `io.modelcontextprotocol/clientInfo`
+        client-info: option<implementation>,
+        /// `io.modelcontextprotocol/logLevel`
+        log-level: option<log-level>,
+    }
+
+    /// A parsed client message with its request metadata
+    @since(version = 0.1.0)
+    record parsed-message {
+        message: client-message,
+        meta: request-meta,
+    }
 
     /// Errors that can occur when sending messages to the client
     @since(version = 0.1.0)
@@ -105,7 +134,7 @@ interface server-io {
         limit: read-limit,
         /// The message frame to use for parsing
         frame: message-frame,
-    ) -> result<client-message, io-error>;
+    ) -> result<parsed-message, io-error>;
 
     /// Serialize and write an outgoing message to the client
     @since(version = 0.1.0)
@@ -132,7 +161,6 @@ interface server-auth {
     use wasmcp:auth/types@0.1.1.{jwt, jwt-claims};
     use mcp.{
         client-message,
-        session,
     };
 
     /// HTTP request context for policy evaluation
@@ -167,8 +195,6 @@ interface server-auth {
         request: client-message,
         /// Identity claims to authorize against (structured)
         claims: jwt-claims,
-        /// The session if enabled
-        session: option<session>,
         /// HTTP request context (optional, for HTTP transports)
         http-context: option<http-context>,
     ) -> bool;
@@ -176,7 +202,7 @@ interface server-auth {
 
 /// MCP tools feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/tools>
+/// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/server/tools>
 @since(version = 0.1.0)
 interface tools {
     use streams.{
@@ -211,7 +237,7 @@ interface tools {
 
 /// MCP resources feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/resources>
+/// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/server/resources>
 @since(version = 0.1.0)
 interface resources {
     use streams.{
@@ -254,7 +280,7 @@ interface resources {
 
 /// MCP prompts feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/prompts>
+/// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/server/prompts>
 @since(version = 0.1.0)
 interface prompts {
     use streams.{
@@ -288,7 +314,7 @@ interface prompts {
 
 /// MCP completions feature
 ///
-/// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/completion>
+/// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/completion>
 @since(version = 0.1.0)
 interface completions {
     use streams.{

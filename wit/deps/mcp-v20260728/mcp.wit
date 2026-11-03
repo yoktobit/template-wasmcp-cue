@@ -1,14 +1,14 @@
-/// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2025-11-25.
+/// A WebAssembly component development kit for the Model Context Protocol (MCP) version 2026-07-28.
 ///
-/// <https://modelcontextprotocol.io/specification/2025-11-25>
-package wasmcp:mcp-v20251125@0.1.1;
+/// <https://modelcontextprotocol.io/specification/2026-07-28>
+package wasmcp:mcp-v20260728@0.1.0;
 
 /// Model Context Protocol (MCP) types and messages.
 ///
-/// <https://modelcontextprotocol.io/specification/2025-11-25>
+/// <https://modelcontextprotocol.io/specification/2026-07-28>
 @since(version = 0.1.0)
 interface mcp {
-    use wasi:io/streams@0.2.8.{
+    use wasi:io/streams@0.2.9.{
         input-stream,
     };
     use wasmcp:auth/types@0.1.1.{jwt, jwt-claims};
@@ -23,7 +23,7 @@ interface mcp {
 
     /// MCP _meta field (JSON-encoded).
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/basic/index#meta>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/basic/index#meta>
     @since(version = 0.1.0)
     type meta = json;
 
@@ -41,15 +41,6 @@ interface mcp {
         jwt: jwt,
         /// Validated claims from the JWT payload (structured).
         claims: jwt-claims,
-    }
-
-    /// Session information from the transport.
-    @since(version = 0.1.0)
-    record session {
-        /// The session ID from Mcp-Session-Id header.
-        session-id: string,
-        /// The ID of the session's underlying key-value store.
-        store-id: string,
     }
 
     // =========================================================================
@@ -92,7 +83,7 @@ interface mcp {
         annotations: option<annotations>,
         /// Optional metadata
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/basic/index#meta>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/basic/index#meta>
         meta: option<meta>,
     }
 
@@ -107,7 +98,7 @@ interface mcp {
         annotations: option<annotations>,
         /// Optional metadata
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/basic/index#meta>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/basic/index#meta>
         meta: option<meta>,
         /// Icons for this resource link
         ///
@@ -120,7 +111,7 @@ interface mcp {
     /// Resource links reference resources that the server can read. They may not
     /// appear in resources/list responses.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#resourcelink>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#resourcelink>
     @since(version = 0.1.0)
     record resource-link-content {
         /// The URI of this resource
@@ -134,7 +125,7 @@ interface mcp {
     ///
     /// Used for images and audio provided to or from an LLM.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#imagecontent>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#imagecontent>
     @since(version = 0.1.0)
     record blob {
         /// The binary data or stream
@@ -154,7 +145,7 @@ interface mcp {
 
     /// Text content block
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#textcontent>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#textcontent>
     @since(version = 0.1.0)
     record text-content {
         /// The text content of the message
@@ -164,7 +155,7 @@ interface mcp {
 
     /// Text resource contents
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#textresourcecontents>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#textresourcecontents>
     @since(version = 0.1.0)
     record text-resource-contents {
         uri: uri,
@@ -174,7 +165,7 @@ interface mcp {
 
     /// Content blocks that can be included in messages
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#contentblock>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#contentblock>
     @since(version = 0.1.0)
     variant content-block {
         text(text-content),
@@ -186,7 +177,7 @@ interface mcp {
 
     /// A message in a prompt with role and content
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#promptmessage>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#promptmessage>
     @since(version = 0.1.0)
     record prompt-message {
         content: content-block,
@@ -195,7 +186,7 @@ interface mcp {
 
     /// Binary resource contents
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#blobresourcecontents>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#blobresourcecontents>
     @since(version = 0.1.0)
     record blob-resource-contents {
         uri: uri,
@@ -212,7 +203,7 @@ interface mcp {
 
     /// Embedded resource with content options
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#embeddedresource>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#embeddedresource>
     @since(version = 0.1.0)
     record embedded-resource-content {
         %resource: resource-contents,
@@ -225,7 +216,7 @@ interface mcp {
 
     /// Log severity levels
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/server/utilities/logging#log-levels>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/server/utilities/logging#log-levels>
     @since(version = 0.1.0)
     enum log-level {
         /// Detailed debugging information
@@ -250,7 +241,7 @@ interface mcp {
     ///
     /// Progress tokens MUST be either a string or integer value.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/progress#progress-flow>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/basic/utilities/progress#progress-flow>
     @since(version = 0.1.0)
     variant progress-token {
         %string(string),
@@ -261,7 +252,7 @@ interface mcp {
     ///
     /// Request IDs can be either strings or numbers as per JSON-RPC 2.0.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#requestid>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#requestid>
     @since(version = 0.1.0)
     variant request-id {
         number(s64),
@@ -273,7 +264,9 @@ interface mcp {
     /// The protocol version determines which features and message types are available.
     @since(version = 0.1.0)
     enum protocol-version {
-        /// Version 2025-11-25 (latest)
+        /// Version 2026-07-28 (latest)
+        v20260728,
+        /// Version 2025-11-25
         v20251125,
         /// Version 2025-06-18
         v20250618,
@@ -301,19 +294,30 @@ interface mcp {
         resources,
     }
 
-    /// Client capability list change flags
+    /// Cache scope for cacheable results
     ///
-    /// Used in notifications to indicate which client lists have changed.
+    /// Controls whether shared intermediaries may cache a response.
     @since(version = 0.1.0)
-    flags client-lists {
-        roots,
+    enum cache-scope {
+        /// May be cached by shared intermediaries
+        public,
+        /// May only be cached by the requesting client
+        private,
+    }
+
+    /// Cache hints required on list/read results (CacheableResult)
+    @since(version = 0.1.0)
+    record cache-hint {
+        /// Freshness hint in milliseconds
+        ttl-ms: u64,
+        cache-scope: cache-scope,
     }
 
     /// Role in a conversation
     ///
     /// Identifies whether a message is from the user or assistant.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#role>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#role>
     @since(version = 0.1.0)
     enum role {
         user,
@@ -324,7 +328,7 @@ interface mcp {
     // Capability Structures
     // =========================================================================
 
-    /// Server capabilities advertised during initialization
+    /// Server capabilities advertised by server/discover
     ///
     /// Indicates which optional features the server supports.
     @since(version = 0.1.0)
@@ -333,11 +337,13 @@ interface mcp {
         completions: option<json>,
         /// Experimental capabilities (implementation-specific)
         experimental: option<list<tuple<string, json>>>,
-        /// Supports logging/setLevel and notifications/message
+        /// Extensions beyond the core protocol, keyed by extension id
+        extensions: option<list<tuple<string, json>>>,
+        /// Emits notifications/message (deprecated feature)
         logging: option<json>,
-        /// Supports list change notifications
+        /// Supports list change notifications via subscriptions/listen
         list-changed: option<server-lists>,
-        /// Supports resource subscriptions
+        /// Supports resource subscriptions via subscriptions/listen
         subscriptions: option<server-subscriptions>,
     }
 
@@ -351,26 +357,28 @@ interface mcp {
         context: option<bool>,
     }
 
-    /// Client capabilities advertised during initialization
+    /// Client capabilities sent in `_meta` of every request
     ///
     /// Indicates which optional features the client supports.
     @since(version = 0.1.0)
     record client-capabilities {
-        /// Supports server-initiated elicitation requests
+        /// Supports elicitation via input-required results
         elicitation: option<json>,
         /// Experimental capabilities (implementation-specific)
         experimental: option<list<tuple<string, json>>>,
-        /// Supports list change notifications
-        list-changed: option<client-lists>,
-        /// Supports server-initiated sampling requests
+        /// Extensions beyond the core protocol, keyed by extension id
+        extensions: option<list<tuple<string, json>>>,
+        /// Supports sampling via input-required results
         sampling: option<sampling-capabilities>,
+        /// Supports roots via input-required results
+        roots: option<json>,
     }
 
     /// MCP implementation metadata
     ///
     /// Identifies the server or client implementation.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#implementation>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#implementation>
     @since(version = 0.1.0)
     record implementation {
         /// Implementation name (e.g., "wasmcp", "claude-desktop")
@@ -395,7 +403,7 @@ interface mcp {
 
     /// Annotations that inform how clients use or display objects
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#annotations>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#annotations>
     @since(version = 0.1.0)
     record annotations {
         /// Intended audience for this content
@@ -417,7 +425,7 @@ interface mcp {
 
     /// Tool-specific annotations
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#toolannotations>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#toolannotations>
     @since(version = 0.1.0)
     record tool-annotations {
         /// Human-readable tool title
@@ -438,7 +446,7 @@ interface mcp {
 
     /// Icon theme indicating designed background
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#icon>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#icon>
     @since(version = 0.1.0)
     enum icon-theme {
         /// Icon designed for light backgrounds
@@ -449,7 +457,7 @@ interface mcp {
 
     /// An optionally-sized icon that can be displayed in a user interface
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#icon>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#icon>
     @since(version = 0.1.0)
     record icon {
         /// URI pointing to icon resource (HTTP/HTTPS URL or data: URI)
@@ -490,7 +498,7 @@ interface mcp {
 
     /// Tool definition
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#tool>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#tool>
     @since(version = 0.1.0)
     record tool {
         /// Unique tool identifier
@@ -525,7 +533,7 @@ interface mcp {
 
     /// Resource definition
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#resource>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#resource>
     @since(version = 0.1.0)
     record mcp-resource {
         /// Resource URI
@@ -557,7 +565,7 @@ interface mcp {
 
     /// Resource template with URI template pattern
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#resourcetemplate>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#resourcetemplate>
     @since(version = 0.1.0)
     record resource-template {
         /// URI template (RFC 6570)
@@ -573,7 +581,7 @@ interface mcp {
 
     /// Prompt argument definition
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#promptargument>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#promptargument>
     @since(version = 0.1.0)
     record prompt-argument {
         /// Argument name
@@ -604,7 +612,7 @@ interface mcp {
 
     /// Prompt definition
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#prompt>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#prompt>
     @since(version = 0.1.0)
     record prompt {
         /// Unique prompt identifier
@@ -634,7 +642,7 @@ interface mcp {
 
     /// JSON Schema for string type
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#stringschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#stringschema>
     @since(version = 0.1.0)
     record string-schema {
         /// Default value
@@ -657,7 +665,7 @@ interface mcp {
 
     /// JSON Schema for number/integer type
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#numberschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#numberschema>
     @since(version = 0.1.0)
     record number-schema {
         /// Default value
@@ -673,7 +681,7 @@ interface mcp {
 
     /// JSON Schema for boolean type
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#booleanschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#booleanschema>
     @since(version = 0.1.0)
     record boolean-schema {
         default: option<bool>,
@@ -693,7 +701,7 @@ interface mcp {
 
     /// Single-select enum schema without titles (simple enum)
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#enumschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#enumschema>
     /// @since(version = 0.1.0)
     record untitled-single-select-enum-schema {
         /// Allowed values
@@ -706,7 +714,7 @@ interface mcp {
 
     /// Single-select enum schema with titles per option
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#enumschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#enumschema>
     /// @since(version = 0.1.0)
     record titled-single-select-enum-schema {
         /// Options with const values and titles
@@ -719,7 +727,7 @@ interface mcp {
 
     /// Multi-select enum schema without titles
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#enumschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#enumschema>
     /// @since(version = 0.1.0)
     record untitled-multi-select-enum-schema {
         /// Allowed values
@@ -732,7 +740,7 @@ interface mcp {
 
     /// Multi-select enum schema with titles per option
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#enumschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#enumschema>
     /// @since(version = 0.1.0)
     record titled-multi-select-enum-schema {
         /// Options with const values and titles
@@ -747,7 +755,7 @@ interface mcp {
     ///
     /// Supports single-select and multi-select with optional titles.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#enumschema>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#enumschema>
     /// @since(version = 0.1.0)
     variant enum-schema {
         /// Single-select without titles
@@ -796,47 +804,78 @@ interface mcp {
     }
 
     // =========================================================================
-    // Request/Response Types: Initialize
+    // Request/Response Types: Discovery
     // =========================================================================
 
-    /// Initialize request parameters
+    /// Server discover result
     ///
-    /// Sent by client to begin an MCP session.
+    /// Returned in response to server/discover. Replaces the removed initialize handshake.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#initializerequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#discoverresult>
     @since(version = 0.1.0)
-    record initialize-request {
-        /// Client capabilities
-        capabilities: client-capabilities,
-        /// Client implementation info
-        client-info: implementation,
-        /// Protocol version client supports
-        protocol-version: protocol-version,
-    }
-
-    /// Initialize result optional properties
-    @since(version = 0.1.0)
-    record initialize-result-options {
-        /// Instructions for using the server
-        instructions: option<string>,
-        meta: option<meta>,
-    }
-
-    /// Initialize result structure
-    ///
-    /// Returned by server in response to initialize request.
-    ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#initializeresult>
-    @since(version = 0.1.0)
-    record initialize-result {
+    record discover-result {
         meta: option<meta>,
         /// Server implementation info
         server-info: implementation,
         /// Server capabilities
         capabilities: server-capabilities,
-        /// Protocol version server will use
-        protocol-version: protocol-version,
-        options: option<initialize-result-options>,
+        /// Protocol versions the server supports
+        supported-versions: list<protocol-version>,
+        /// Instructions for using the server
+        instructions: option<string>,
+    }
+
+    /// Subscription kinds a client opts into with subscriptions/listen
+    @since(version = 0.1.0)
+    record subscriptions-listen-request {
+        tools-list-changed: bool,
+        prompts-list-changed: bool,
+        resources-list-changed: bool,
+        /// Resource URIs to receive resource-updated notifications for
+        resource-subscriptions: list<uri>,
+    }
+
+    // =========================================================================
+    // Multi Round-Trip Requests (MRTR)
+    // =========================================================================
+
+    /// A server request the client must fulfil before retrying
+    @since(version = 0.1.0)
+    variant input-request {
+        elicitation-create(elicit-request),
+        sampling-create-message(sampling-create-message-request),
+        roots-list(list-roots-request),
+    }
+
+    /// The client's answer to an input-request, as the JSON-encoded result.
+    ///
+    /// Kept as JSON so request records stay free of stream handles and remain cloneable.
+    @since(version = 0.1.0)
+    variant input-response {
+        elicitation-create(json),
+        sampling-create-message(json),
+        roots-list(json),
+    }
+
+    /// Interim result (`resultType: "input_required"`)
+    ///
+    /// Only valid for tools/call, prompts/get and resources/read.
+    @since(version = 0.1.0)
+    record input-required-result {
+        meta: option<meta>,
+        /// Server-keyed requests for additional input
+        input-requests: option<list<tuple<string, input-request>>>,
+        /// Opaque server state echoed back by the client on retry
+        request-state: option<string>,
+    }
+
+    /// Input supplied by the client when retrying a request
+    @since(version = 0.1.0)
+    record input-retry {
+        /// Responses keyed by the keys of the input-requests
+        input-responses: option<list<tuple<string, input-response>>>,
+        /// The request-state from the input-required-result, unmodified
+        request-state: option<string>,
     }
 
     // =========================================================================
@@ -845,7 +884,7 @@ interface mcp {
 
     /// List tools request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listtoolsrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listtoolsrequest>
     @since(version = 0.1.0)
     record list-tools-request {
         /// Pagination cursor (from previous response)
@@ -854,7 +893,7 @@ interface mcp {
 
     /// List tools result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listtoolsresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listtoolsresult>
     @since(version = 0.1.0)
     record list-tools-result {
         meta: option<meta>,
@@ -862,22 +901,26 @@ interface mcp {
         next-cursor: option<cursor>,
         /// Available tools
         tools: list<tool>,
+        /// Cache hints (defaults to ttl 0, private when absent)
+        cache: option<cache-hint>,
     }
 
     /// Call tool request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#calltoolrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#calltoolrequest>
     @since(version = 0.1.0)
     record call-tool-request {
         /// Tool name to invoke
         name: string,
         /// JSON-encoded tool arguments
         arguments: option<json>,
+        /// Present when retrying after an input-required result
+        input-retry: option<input-retry>,
     }
 
     /// Call tool result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#calltoolresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#calltoolresult>
     @since(version = 0.1.0)
     record call-tool-result {
         meta: option<meta>,
@@ -895,7 +938,7 @@ interface mcp {
 
     /// List resources request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listresourcesrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listresourcesrequest>
     @since(version = 0.1.0)
     record list-resources-request {
         /// Pagination cursor (from previous response)
@@ -904,7 +947,7 @@ interface mcp {
 
     /// List resources result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listresourcesresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listresourcesresult>
     @since(version = 0.1.0)
     record list-resources-result {
         meta: option<meta>,
@@ -912,30 +955,36 @@ interface mcp {
         next-cursor: option<cursor>,
         /// Available resources
         resources: list<mcp-resource>,
+        /// Cache hints (defaults to ttl 0, private when absent)
+        cache: option<cache-hint>,
     }
 
     /// Read resource request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#readresourcerequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#readresourcerequest>
     @since(version = 0.1.0)
     record read-resource-request {
         /// Resource URI to read
         uri: uri,
+        /// Present when retrying after an input-required result
+        input-retry: option<input-retry>,
     }
 
     /// Read resource result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#readresourceresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#readresourceresult>
     @since(version = 0.1.0)
     record read-resource-result {
         meta: option<meta>,
         /// Resource contents (text or binary)
         contents: list<resource-contents>,
+        /// Cache hints (defaults to ttl 0, private when absent)
+        cache: option<cache-hint>,
     }
 
     /// List resource templates request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listresourcetemplatesrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listresourcetemplatesrequest>
     @since(version = 0.1.0)
     record list-resource-templates-request {
         /// Pagination cursor (from previous response)
@@ -944,7 +993,7 @@ interface mcp {
 
     /// List resource templates result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listresourcetemplatesresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listresourcetemplatesresult>
     @since(version = 0.1.0)
     record list-resource-templates-result {
         meta: option<meta>,
@@ -952,6 +1001,8 @@ interface mcp {
         next-cursor: option<cursor>,
         /// Available resource templates
         resource-templates: list<resource-template>,
+        /// Cache hints (defaults to ttl 0, private when absent)
+        cache: option<cache-hint>,
     }
 
     // =========================================================================
@@ -960,7 +1011,7 @@ interface mcp {
 
     /// List prompts request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listpromptsrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listpromptsrequest>
     @since(version = 0.1.0)
     record list-prompts-request {
         /// Pagination cursor (from previous response)
@@ -969,7 +1020,7 @@ interface mcp {
 
     /// List prompts result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listpromptsresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listpromptsresult>
     @since(version = 0.1.0)
     record list-prompts-result {
         meta: option<meta>,
@@ -977,22 +1028,26 @@ interface mcp {
         next-cursor: option<cursor>,
         /// Available prompts
         prompts: list<prompt>,
+        /// Cache hints (defaults to ttl 0, private when absent)
+        cache: option<cache-hint>,
     }
 
     /// Get prompt request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#getpromptrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#getpromptrequest>
     @since(version = 0.1.0)
     record get-prompt-request {
         /// Prompt name to retrieve
         name: string,
         /// JSON-encoded prompt arguments
         arguments: option<json>,
+        /// Present when retrying after an input-required result
+        input-retry: option<input-retry>,
     }
 
     /// Get prompt result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#getpromptresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#getpromptresult>
     @since(version = 0.1.0)
     record get-prompt-result {
         meta: option<meta>,
@@ -1036,18 +1091,18 @@ interface mcp {
     variant completion-reference {
         /// Prompt reference
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#promptreference>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#promptreference>
         prompt(completion-prompt-reference),
 
         /// Resource template reference
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#resourcetemplatereference>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#resourcetemplatereference>
         resource-template(uri),
     }
 
     /// Complete request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#completerequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#completerequest>
     @since(version = 0.1.0)
     record complete-request {
         /// Argument to complete
@@ -1060,7 +1115,7 @@ interface mcp {
 
     /// Complete result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#completeresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#completeresult>
     @since(version = 0.1.0)
     record complete-result {
         meta: option<meta>,
@@ -1078,7 +1133,7 @@ interface mcp {
 
     /// Form-based elicitation request (existing behavior)
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#elicitrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#elicitrequest>
     /// @since(version = 0.1.0)
     record elicit-form-request {
         /// Message to show client
@@ -1091,11 +1146,9 @@ interface mcp {
     ///
     /// Directs the user to navigate to a URL for elicitation.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#elicitrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#elicitrequest>
     /// @since(version = 0.1.0)
     record elicit-url-request {
-        /// Unique identifier for this elicitation
-        elicitation-id: string,
         /// Message explaining why the URL must be visited
         message: string,
         /// URL the user should navigate to
@@ -1104,7 +1157,7 @@ interface mcp {
 
     /// Elicitation request (form or URL mode)
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#elicitrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#elicitrequest>
     /// @since(version = 0.1.0)
     variant elicit-request {
         /// Form-based elicitation with structured schema
@@ -1113,20 +1166,9 @@ interface mcp {
         url(elicit-url-request),
     }
 
-    /// Elicitation complete notification
-    ///
-    /// Sent by server when out-of-band URL elicitation is complete.
-    ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#elicitationcompletenotification>
-    /// @since(version = 0.1.0)
-    record elicitation-complete-notification {
-        /// The elicitation ID that completed
-        elicitation-id: string,
-    }
-
     /// Elicit result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#elicitresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#elicitresult>
     record elicit-result {
         meta: option<meta>,
         /// User action (accept, decline, cancel)
@@ -1141,7 +1183,7 @@ interface mcp {
 
     /// List roots request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listrootsrequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listrootsrequest>
     @since(version = 0.1.0)
     record list-roots-request {
         meta: option<meta>,
@@ -1151,7 +1193,7 @@ interface mcp {
 
     /// Root directory or file
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#root>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#root>
     @since(version = 0.1.0)
     record root {
         meta: option<meta>,
@@ -1163,28 +1205,12 @@ interface mcp {
 
     /// List roots result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#listrootsresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#listrootsresult>
     @since(version = 0.1.0)
     record list-roots-result {
         meta: option<meta>,
         /// Client root directories/files
         roots: list<root>,
-    }
-
-    // =========================================================================
-    // Request/Response Types: Ping
-    // =========================================================================
-
-    /// Ping request
-    ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#pingrequest>
-    @since(version = 0.1.0)
-    record ping-request {
-        meta: option<meta>,
-        /// Progress token for tracking
-        progress-token: option<progress-token>,
-        /// Additional data
-        extras: list<tuple<string, json>>,
     }
 
     // =========================================================================
@@ -1249,7 +1275,7 @@ interface mcp {
 
     /// Tool choice configuration for sampling
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#toolchoice>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#toolchoice>
     /// @since(version = 0.1.0)
     record tool-choice {
         /// Tool choice mode
@@ -1260,7 +1286,7 @@ interface mcp {
     ///
     /// Represents a request from the assistant to call a tool.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#toolusecontent>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#toolusecontent>
     /// @since(version = 0.1.0)
     record tool-use-content {
         /// Unique identifier for this tool use
@@ -1284,7 +1310,7 @@ interface mcp {
     ///
     /// Represents the result of a tool execution returned to the model.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#toolresultcontent>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#toolresultcontent>
     /// @since(version = 0.1.0)
     record tool-result-content {
         /// ID of the tool use this result is for
@@ -1314,7 +1340,7 @@ interface mcp {
 
     /// Sampling create message request
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#createmessagerequest>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#createmessagerequest>
     @since(version = 0.1.0)
     record sampling-create-message-request {
         /// Context to include
@@ -1347,7 +1373,7 @@ interface mcp {
 
     /// Sampling create message result
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#createmessageresult>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#createmessageresult>
     @since(version = 0.1.0)
     record sampling-create-message-result {
         meta: option<meta>,
@@ -1379,7 +1405,8 @@ interface mcp {
     /// Client requests (sent to server)
     @since(version = 0.1.0)
     variant client-request {
-        initialize(initialize-request),
+        /// server/discover
+        discover,
         tools-list(list-tools-request),
         tools-call(call-tool-request),
         resources-list(list-resources-request),
@@ -1388,25 +1415,18 @@ interface mcp {
         prompts-list(list-prompts-request),
         prompts-get(get-prompt-request),
         completion-complete(complete-request),
-        logging-set-level(log-level),
-        ping(ping-request),
-        /// Subscribe to resource updates
-        ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#subscriberequest>
-        resources-subscribe(uri),
-        /// Unsubscribe from resource updates
-        ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#unsubscriberequest>
-        resources-unsubscribe(uri),
+        /// subscriptions/listen
+        subscriptions-listen(subscriptions-listen-request),
     }
 
     /// Server requests (sent to client)
+    ///
+    /// Server-initiated requests are replaced by multi round-trip requests; see input-required-result.
     @since(version = 0.1.0)
     variant server-request {
         elicitation-create(elicit-request),
         roots-list(list-roots-request),
         sampling-create-message(sampling-create-message-request),
-        ping(ping-request),
     }
 
     /// MCP request (client or server)
@@ -1419,9 +1439,9 @@ interface mcp {
     /// Server responses (to client requests)
     @since(version = 0.1.0)
     variant server-result {
-        ping,
-        logging-set-level,
-        initialize(initialize-result),
+        discover(discover-result),
+        /// Interim result asking the client for more input
+        input-required(input-required-result),
         tools-list(list-tools-result),
         tools-call(call-tool-result),
         resources-list(list-resources-result),
@@ -1453,7 +1473,7 @@ interface mcp {
 
     /// Logging message notification
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#loggingmessagenotification>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#loggingmessagenotification>
     @since(version = 0.1.0)
     record logging-message-notification {
         /// The data to be logged, such as a string message or an object.
@@ -1466,7 +1486,7 @@ interface mcp {
 
     /// Cancelled notification
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#cancellednotification>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#cancellednotification>
     @since(version = 0.1.0)
     record cancelled-notification {
         /// Request that was cancelled
@@ -1477,7 +1497,7 @@ interface mcp {
 
     /// Progress notification
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#progressnotification>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#progressnotification>
     @since(version = 0.1.0)
     record progress-notification {
         /// Progress token from original request
@@ -1502,7 +1522,7 @@ interface mcp {
     ///
     /// Notifies client that a subscribed resource has changed.
     ///
-    /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#resourceupdatednotification>
+    /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#resourceupdatednotification>
     @since(version = 0.1.0)
     record resource-updated-notification {
         meta: option<meta>,
@@ -1515,57 +1535,46 @@ interface mcp {
     variant server-notification {
         /// Tools list changed
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#toollistchangednotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#toollistchangednotification>
         tools-list-changed(notification-options),
         /// Resources list changed
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#resourcelistchangednotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#resourcelistchangednotification>
         resources-list-changed(notification-options),
         /// Resource updated
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#resourceupdatednotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#resourceupdatednotification>
         resources-updated(resource-updated-notification),
         /// Prompts list changed
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#promptlistchangednotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#promptlistchangednotification>
         prompts-list-changed(notification-options),
         /// Log message
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#loggingmessagenotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#loggingmessagenotification>
         log(logging-message-notification),
         /// Request cancelled
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#cancellednotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#cancellednotification>
         cancellation(cancelled-notification),
         /// Progress update
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#progressnotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#progressnotification>
         progress(progress-notification),
-        /// Elicitation complete (URL mode)
-        ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#elicitationcompletenotification>
-        /// @since(version = 0.1.0)
-        elicitation-complete(elicitation-complete-notification),
+        /// Acknowledges a subscriptions/listen request
+        subscriptions-acknowledged(notification-options),
     }
 
     /// Client notifications (sent to server)
     @since(version = 0.1.0)
     variant client-notification {
-        /// Initialization complete
-        ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#initializednotification>
-        initialized(notification-options),
-        /// Roots list changed
-        ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#rootslistchangednotification>
-        roots-list-changed(notification-options),
         /// Request cancelled
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#cancellednotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#cancellednotification>
         cancelled(cancelled-notification),
         /// Progress update
         ///
-        /// Spec: <https://modelcontextprotocol.io/specification/2025-11-25/schema#progressnotification>
+        /// Spec: <https://modelcontextprotocol.io/specification/2026-07-28/schema#progressnotification>
         progress(progress-notification),
     }
 
@@ -1608,7 +1617,8 @@ interface mcp {
         server(error),
         /// Other JSON-RPC error (-32768 to -32000, excluding above)
         json-rpc(error),
-        /// Unspecified MCP error
+        /// MCP-specific error (-32020 to -32099): header-mismatch (-32020),
+        /// missing-required-client-capability (-32021), unsupported-protocol-version (-32022)
         mcp(error),
     }
 

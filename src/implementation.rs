@@ -1,5 +1,5 @@
 use crate::{
-    bindings::wasmcp::mcp_v20251125::{
+    bindings::wasmcp::mcp_v20260728::{
         mcp::{CallToolRequest, CallToolResult},
         server_handler::ErrorCode,
     },

@@ -1,4 +1,4 @@
-use crate::bindings::wasmcp::mcp_v20251125::mcp::{
+use crate::bindings::wasmcp::mcp_v20260728::mcp::{
     CallToolResult, ContentBlock, TextContent, TextData,
 };
 
